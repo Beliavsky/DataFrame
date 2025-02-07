@@ -55,3 +55,4 @@ The ETFs are
    EEM -- iShares MSCI Emerging Markets (emerging market stocks)
    TLT -- iShares 20+ Year Treasury Bond (U.S. long-term government bonds)
 ```
+The pairwise correlations of returns of all the stock ETFs (SPY, EFA, EEM) all exceed 0.8, while they are negatively correlated to TLT.
