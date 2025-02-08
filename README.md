@@ -24,7 +24,7 @@ call display(corr_table(df_ret%values,df_ret%columns), &
 end program xdataframe_stats
 ```
 
-reads historical daily closing prices for a few ETFs from a CSV file, which were obtained using the Python script `xget_prices_yahoo.py`. )The dates from the downloaded data file were transformed from YYYY-MM-DD format to YYYYMMDD to simplify reading them in Fortran.) The program then computes returns and prints statistics on those returns, including a correlation matrix. The output is
+reads historical daily closing prices for a few ETFs from a CSV file, which were obtained using the Python script `xget_prices_yahoo.py`. (The dates from the downloaded data file were transformed from YYYY-MM-DD format to YYYYMMDD to simplify reading them in Fortran.) The program then computes returns and prints statistics on those returns, including a correlation matrix. The output is
 
 ```
 data file: spy_efa_eem_tlt.csv
