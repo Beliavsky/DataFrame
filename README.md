@@ -47,9 +47,8 @@ EFA                      0.8832     1.0000     0.8679    -0.2848
 EEM                      0.8183     0.8679     1.0000    -0.2662
 TLT                     -0.3127    -0.2848    -0.2662     1.0000
 ```
-
-```
 The ETFs are
+```
    SPY -- S&P 500 (U.S. stocks)
    EFA -- iShares MSCI EAFE (foreign developed market stocks)
    EEM -- iShares MSCI Emerging Markets (emerging market stocks)
