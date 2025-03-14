@@ -1,12 +1,13 @@
 module basic_stats_mod
 use iso_fortran_env, only: output_unit
 use kind_mod, only: dp
-use util_mod, only: default
+use util_mod, only: default, print_table
 implicit none
 private
 public :: mean, variance, sd, mean_and_sd, kurtosis, basic_stats, &
    print_basic_stats, basic_stats_names, correl, acf, nbasic_stats, &
-   stat, stats, corr_mat
+   stat, stats, corr_mat, rms, moving_sum, moving_average, &
+   print_corr_mat, skew
 integer, parameter :: nbasic_stats = 6
 character (len=*), parameter :: basic_stats_names(nbasic_stats) = &
    [character(len=4) :: "mean", "sd", "skew", "kurt", "min", "max"]
@@ -86,6 +87,13 @@ var = sum((x - m)**2) / (n-1)
 xsd = sqrt(max(0.0_dp, var))
 end function sd
 
+pure function rms(x) result(xrms)
+! return the root-mean-square of x(:)
+real(kind=dp), intent(in) :: x(:)
+real(kind=dp) :: xrms
+xrms = sqrt(sum(x**2)/size(x))
+end function rms
+
 pure function mean_and_sd(x) result(res)
 ! return the mean and standard deviation of x(:)
 real(kind=dp), intent(in) :: x(:)
@@ -138,11 +146,14 @@ real(kind=dp)             :: stats(nbasic_stats)
 stats = [mean(x), sd(x), skew(x), kurtosis(x), minval(x), maxval(x)]
 end function basic_stats
 
-subroutine print_basic_stats(x, outu)
+subroutine print_basic_stats(x, outu, fmt_header)
 real(kind=dp), intent(in) :: x(:)
 integer, intent(in), optional :: outu
-integer :: outu_
+character (len=*), intent(in), optional :: fmt_header
+integer :: i, outu_
 outu_ = default(output_unit, outu)
+if (present(fmt_header)) write (outu_, fmt_header)
+write (outu_, "(*(a10))") (trim(basic_stats_names(i)), i=1,nbasic_stats)
 write (outu_, "(*(f10.6))") basic_stats(x)
 end subroutine print_basic_stats
 
@@ -187,6 +198,22 @@ do lag = 1, nacf
 end do
 end function acf
 
+subroutine print_corr_mat(x, col_names, outu, fmt_col_names, fmt_row, &
+   fmt_header, fmt_trailer)
+! print the correlation matrix of the columns of x(:,:)
+real(kind=dp), intent(in) :: x(:,:)
+character (len=*), intent(in) :: col_names(:)
+integer          , intent(in), optional :: outu ! output unit
+character (len=*), intent(in), optional :: fmt_header, fmt_trailer, &
+   fmt_col_names, fmt_row
+character (len=100) :: fmt_col_names_, fmt_row_
+fmt_col_names_ = default("(*(a8,:,1x))", fmt_col_names)
+fmt_row_ = default("(a8, *(1x,f8.4))", fmt_row)
+call print_table(corr_mat(x), row_names=col_names, col_names=col_names, &
+   fmt_header=fmt_header, fmt_trailer=fmt_trailer, outu=outu, &
+   fmt_col_names=fmt_col_names_, fmt_row=fmt_row_)
+end subroutine print_corr_mat
+
 pure function corr_mat(x) result(cor)
     ! return the correlation matrix of the columns of x(:,:)
     real(kind=dp), intent(in) :: x(:,:)
@@ -210,7 +237,48 @@ pure function corr_mat(x) result(cor)
     cor = matmul(transpose(centered_x), centered_x) / (n - 1)
     cor = cor / spread(std_vec, dim=1, ncopies=p)
     cor = cor / spread(std_vec, dim=2, ncopies=p)
-
 end function corr_mat
+
+pure function moving_sum(x, k) result(xsum)
+! return a moving sum of x(:) with k terms, using fewer terms for i < k
+real(kind=dp), intent(in) :: x(:)
+integer      , intent(in) :: k
+real(kind=dp)             :: xsum(size(x))
+integer                   :: i, n
+n = size(x)
+if (n < 1) return
+if (k < 1) then
+   xsum = 0.0_dp
+   return
+end if
+xsum(1) = x(1)
+do i=2,min(k, n)
+   xsum(i) = xsum(i-1) + x(i)
+end do
+do i=k+1, n
+   xsum(i) = xsum(i-1) + x(i) - x(i-k)
+end do
+end function moving_sum
+
+pure function moving_average(x, k) result(xma)
+! return a moving average of x(:) with k terms, using fewer terms for i < k
+real(kind=dp), intent(in) :: x(:)
+integer      , intent(in) :: k
+real(kind=dp)             :: xma(size(x))
+integer                   :: i, n
+real(kind=dp)             :: xsum(size(x))
+n = size(x)
+if (k < 1) then
+   xma = 0.0_dp
+   return
+end if
+xsum = moving_sum(x, k)
+do i=1,min(k, n)
+   xma(i) = xsum(i)/i
+end do
+do i=k+1,n
+   xma(i) = xsum(i)/k
+end do
+end function moving_average
 
 end module basic_stats_mod
