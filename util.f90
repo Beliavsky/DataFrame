@@ -3,7 +3,8 @@ use iso_fortran_env, only: output_unit
 use kind_mod, only: dp
 implicit none
 private
-public :: default, assert_equal, write_merge, split_string, display
+public :: default, assert_equal, write_merge, split_string, display, &
+   print_time_elapsed, read_words_line, str, print_table, exe_name
 interface default
    module procedure default_int, default_real, default_logical, &
       default_character
@@ -166,5 +167,74 @@ do i=1,size(x,1)
    write(outu_,fmt_r_) x(i,:)
 end do
 end subroutine display_matrix
+
+subroutine print_time_elapsed(old_time, outu)
+real(kind=dp), intent(in) :: old_time ! previously set by call cpu_time(old_time)
+real(kind=dp)             :: tt
+integer      , intent(in), optional :: outu
+integer                             :: outu_
+character (len=100) :: fmt_time_
+outu_ = default(output_unit, outu)
+call cpu_time(tt)
+fmt_time_= "('time elapsed (s): ', f0.4)"
+write (outu_, fmt_time_) tt - old_time
+end subroutine print_time_elapsed
+
+subroutine read_words_line(iu,words)
+! read words from line, where the line has the # of words followed by the words
+! n word_1 word_2 ... word_n
+integer          , intent(in)               :: iu
+character (len=*), intent(out), allocatable :: words(:)
+integer :: ierr, nwords
+character (len=10000) :: text
+read (iu,"(a)") text
+read (text, *) nwords
+allocate (words(nwords))
+read (text, *, iostat=ierr) nwords, words
+if (ierr /= 0) then
+   print*,"could not read ", nwords, " words from '" // trim(text) // "'"
+   error stop
+end if
+end subroutine read_words_line
+
+function str(i) result(text)
+! convert integer to string
+integer, intent(in) :: i
+character (len=20) :: text
+write (text,"(i0)") i
+end function str
+
+subroutine print_table(x, row_names, col_names, outu, &
+   fmt_col_names, fmt_row, fmt_header, fmt_trailer)
+! print a table with row and column names
+real(kind=dp)    , intent(in) :: x(:,:) ! matrix to be printed
+character (len=*), intent(in) :: row_names(:), col_names(:)
+integer          , intent(in), optional :: outu ! output unit
+character (len=*), intent(in), optional :: fmt_col_names, fmt_row, &
+   fmt_header, fmt_trailer
+integer                       :: i, n1, n2, outu_
+character (len=*), parameter  :: msg="in print_table, "
+character (len=100) :: fmt_col_names_, fmt_row_
+n1 = size(x, 1)
+n2 = size(x, 2)
+call assert_equal(size(row_names), n1, msg // "size(row_names)")
+call assert_equal(size(col_names), n2, msg // "size(col_names)")
+fmt_col_names_ = default("(*(a12,:,1x))", fmt_col_names)
+fmt_row_ = default("(a12, *(1x,f12.6))", fmt_row)
+outu_ = default(output_unit, outu)
+if (present(fmt_header)) write (outu_, fmt_header)
+write (outu_, fmt_col_names_) "", (trim(col_names(i)), i=1,n2)
+do i=1,n1
+   write (outu_, fmt_row_) trim(row_names(i)), x(i,:)
+end do
+if (present(fmt_trailer)) write (outu_, fmt_trailer)
+end subroutine print_table
+
+function exe_name() result(xname)
+! return the program name
+character (len=1000) :: xname
+call get_command_argument(0,xname)
+xname = trim(xname)
+end function exe_name
 
 end module util_mod
