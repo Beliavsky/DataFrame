@@ -263,12 +263,13 @@ end do
 close(unit)
 end subroutine write_csv
 
-subroutine print_summary(self, outu, fmt_trailer)
+subroutine print_summary(self, outu, fmt_header, fmt_trailer)
 type(DataFrame), intent(in) :: self
 integer, intent(in), optional :: outu
-character (len=*), intent(in), optional :: fmt_trailer
+character (len=*), intent(in), optional :: fmt_header, fmt_trailer
 integer :: outu_, nr, nc
 outu_ = default(output_unit, outu)
+if (present(fmt_header)) write (outu_, fmt_header)
 nr = nrow(self)
 nc = ncol(self)
 write(outu_, "('#rows, columns:', 2(1x,i0))") nr, nc
