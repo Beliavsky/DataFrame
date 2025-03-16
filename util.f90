@@ -4,7 +4,8 @@ use kind_mod, only: dp
 implicit none
 private
 public :: default, assert_equal, write_merge, split_string, display, &
-   print_time_elapsed, read_words_line, str, print_table, exe_name
+   print_time_elapsed, read_words_line, str, print_table, exe_name, &
+   join
 interface default
    module procedure default_int, default_real, default_logical, &
       default_character
@@ -236,5 +237,23 @@ character (len=1000) :: xname
 call get_command_argument(0,xname)
 xname = trim(xname)
 end function exe_name
+
+function join(words,sep) result(str)
+! trim and concatenate a vector of character variables,
+! inserting sep between them
+character (len=*), intent(in)                                   :: words(:),sep
+character (len=(size(words)-1)*len(sep) + sum(len_trim(words))) :: str
+integer                                                         :: i,nw
+nw  = size(words)
+str = ""
+if (nw < 1) then
+   return
+else
+   str = words(1)
+end if
+do i=2,nw
+   str = trim(str) // sep // words(i) 
+end do
+end function join
 
 end module util_mod
