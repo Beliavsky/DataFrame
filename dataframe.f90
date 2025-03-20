@@ -6,7 +6,7 @@ implicit none
 private
 public :: DataFrame, nrow, ncol, print_summary, random, operator(*), &
    operator(/), operator(+), operator(-), display, allocate_df, &
-   operator(**)
+   operator(**), shape
 integer, parameter :: nlen_columns = 100, nrows_print = 10 ! number of rows to print by default.
 interface display
    module procedure display_data
@@ -33,10 +33,33 @@ type :: DataFrame
    character(len=nlen_columns), allocatable :: columns(:)
    real(kind=dp), allocatable    :: values(:,:)
    contains
-      procedure :: read_csv, display=>display_data, write_csv
+      procedure :: read_csv, display=>display_data, write_csv, irow, icol
+
 end type DataFrame
 
 contains
+
+pure function shape(df) result(ishape)
+type(DataFrame), intent(in) :: df
+integer                     :: ishape(2)
+ishape = [nrow(df), ncol(df)]
+end function shape
+
+pure function icol(df, ivec) result(df_new)
+! returns a dataframe with the subset of columns in ivec(:)
+class(DataFrame), intent(in) :: df
+integer, intent(in) :: ivec(:)
+type(DataFrame) :: df_new
+df_new = DataFrame(index=df%index, columns=df%columns(ivec), values=df%values(:, ivec))
+end function icol
+
+pure function irow(df, ivec) result(df_new)
+! returns a dataframe with the subset of columns in ivec(:)
+class(DataFrame), intent(in) :: df
+integer, intent(in) :: ivec(:)
+type(DataFrame) :: df_new
+df_new = DataFrame(index=df%index(ivec), columns=df%columns, values=df%values(ivec, :))
+end function irow
 
 subroutine allocate_df(df, n1, n2, default_indices, default_columns)
 type(DataFrame), intent(out) :: df
@@ -56,7 +79,7 @@ if (default(.true., default_columns)) then
 end if
 end subroutine allocate_df
 
-function nrow(df) result(num_rows)
+elemental function nrow(df) result(num_rows)
 ! return the # of rows
 type(DataFrame), intent(in) :: df
 integer                     :: num_rows
@@ -67,7 +90,7 @@ else
 end if
 end function nrow
 
-function ncol(df) result(num_col)
+elemental function ncol(df) result(num_col)
 ! return the # of columns
 type(DataFrame), intent(in) :: df
 integer                     :: num_col
@@ -182,10 +205,10 @@ end subroutine read_csv
 ! An optional logical argument 'print_all' may be provided. If it is present
 ! and set to .true., then all rows are printed.
 !------------------------------------------------------------------
-subroutine display_data(self, print_all, fmt_ir, fmt_header, title)
+subroutine display_data(self, print_all, fmt_ir, fmt_header, fmt_trailer, title)
 class(DataFrame), intent(in) :: self
 logical, intent(in), optional :: print_all
-character (len=*), intent(in), optional :: fmt_ir, fmt_header, title
+character (len=*), intent(in), optional :: fmt_ir, fmt_header, fmt_trailer, title
 integer :: total, i, n_top, n_bottom
 logical :: print_all_
 character (len=100) :: fmt_ir_, fmt_header_
@@ -212,21 +235,19 @@ else
       ! Compute number of rows for the top and bottom parts.
       n_top = nrows_print / 2
       n_bottom = nrows_print - n_top
-      
       ! Print first n_top rows.
       do i = 1, n_top
          write(*,fmt_ir_) self%index(i), self%values(i,:)
       end do
-      
       ! Indicate omitted rows.
       write(*,*) "   ... (", total - nrows_print, " rows omitted) ..."
-      
       ! Print last n_bottom rows.
       do i = total - n_bottom + 1, total
          write(*,fmt_ir_) self%index(i), self%values(i,:)
       end do
    end if
 end if
+if (present(fmt_trailer)) write(*,fmt_trailer)
 end subroutine display_data
 
 !------------------------------------------------------------------
