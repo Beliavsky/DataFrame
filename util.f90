@@ -256,7 +256,7 @@ do i=2,nw
 end do
 end function join
 
-function seq(first, last) result(vec)
+pure function seq(first, last) result(vec)
 integer, intent(in) :: first, last
 integer, allocatable :: vec(:)
 integer :: i, n
