@@ -1,6 +1,6 @@
 module dataframe_mod
 use kind_mod, only: dp
-use util_mod, only: default, split_string
+use util_mod, only: default, split_string, seq
 use iso_fortran_env, only: output_unit
 implicit none
 private
@@ -33,7 +33,7 @@ type :: DataFrame
    character(len=nlen_columns), allocatable :: columns(:)
    real(kind=dp), allocatable    :: values(:,:)
    contains
-      procedure :: read_csv, display=>display_data, write_csv, irow, icol
+      procedure :: read_csv, display=>display_data, write_csv, irow, icol, loc
 
 end type DataFrame
 
@@ -52,6 +52,39 @@ integer, intent(in) :: ivec(:)
 type(DataFrame) :: df_new
 df_new = DataFrame(index=df%index, columns=df%columns(ivec), values=df%values(:, ivec))
 end function icol
+
+pure function loc(df, rows, columns) result(df_new)
+! return a subset of a dataframe with the specified rows (index values) and columns
+class(DataFrame), intent(in) :: df
+integer, intent(in), optional :: rows(:)
+character (len=*), intent(in), optional :: columns(:)
+type(DataFrame) :: df_new
+integer, allocatable :: rows_(:)
+character (len=nlen_columns), allocatable :: columns_(:)
+integer :: i
+integer, allocatable :: jrow(:), jcol(:)
+if (present(rows)) then
+   rows_ = rows
+   allocate (jrow(size(rows)))
+   do i=1,size(rows)
+      jrow(i) = findloc(df%index, rows(i), dim=1)
+   end do
+else
+   rows_ = df%index
+   jrow = seq(1, nrow(df))
+end if
+if (present(columns)) then
+   columns_ = columns
+   allocate(jcol(size(columns)))
+   do i=1,size(columns)
+      jcol(i) = findloc(df%columns, columns(i), dim=1)
+   end do
+else
+   columns_ = df%columns
+   jcol = seq(1, ncol(df))
+end if
+df_new = DataFrame(index=rows_, columns=columns_, values=df%values(jrow, jcol))
+end function loc
 
 pure function irow(df, ivec) result(df_new)
 ! returns a dataframe with the subset of columns in ivec(:)
