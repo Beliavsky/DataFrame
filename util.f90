@@ -5,7 +5,7 @@ implicit none
 private
 public :: default, assert_equal, write_merge, split_string, display, &
    print_time_elapsed, read_words_line, str, print_table, exe_name, &
-   join
+   join, seq
 interface default
    module procedure default_int, default_real, default_logical, &
       default_character
@@ -255,5 +255,16 @@ do i=2,nw
    str = trim(str) // sep // words(i) 
 end do
 end function join
+
+function seq(first, last) result(vec)
+integer, intent(in) :: first, last
+integer, allocatable :: vec(:)
+integer :: i, n
+n = max(0, last - first + 1)
+allocate (vec(n))
+do i=1, n
+   vec(i) = first + i - 1
+end do
+end function seq
 
 end module util_mod
