@@ -6,8 +6,9 @@ implicit none
 private
 public :: DataFrame, nrow, ncol, print_summary, random, operator(*), &
    operator(/), operator(+), operator(-), display, allocate_df, &
-   operator(**), shape
+   operator(**), shape, blank_line_before_display
 integer, parameter :: nlen_columns = 100, nrows_print = 10 ! number of rows to print by default.
+logical, save :: blank_line_before_display = .true.
 interface display
    module procedure display_data
 end interface display
@@ -249,6 +250,7 @@ fmt_ir_ = default("(i10,*(1x,f10.4))", fmt_ir)
 fmt_header_ = default("(a10,*(1x,a10))", fmt_header)
 print_all_ = default(.false., print_all)
 total = size(self%index)
+if (blank_line_before_display) write(*,*)
 if (present(title)) write(*,"(a)") title
 ! Print header.
 write(*,fmt_header_) "index", (trim(self%columns(i)), i=1,size(self%columns))
