@@ -1,7 +1,7 @@
-executables = xbasic_stats_gfort.exe xdataframe_stats_gfort.exe xxdataframe_stats_gfort.exe xdataframe_gfort.exe xtable_gfort.exe xtable_stats_gfort.exe xxtable_gfort.exe xutil_gfort.exe xxdataframe_gfort.exe
+executables = xbasic_stats_gfort.exe xdataframe_stats_gfort.exe xxdataframe_stats_gfort.exe xdataframe_gfort.exe xtable_gfort.exe xtable_stats_gfort.exe xxtable_gfort.exe xutil_gfort.exe xxdataframe_gfort.exe xdataframe_loc_gfort.exe
 FC     = gfortran
 FFLAGS = -O0 -Wall -Werror=unused-parameter -Werror=unused-variable -Werror=unused-function -Wno-maybe-uninitialized -Wno-surprising -fbounds-check -static -g -fmodule-private
-obj    = kind.o constants.o util.o basic_stats.o random.o xbasic_stats.o table.o table_stats.o dataframe.o dataframe_stats.o xdataframe_stats.o xxdataframe_stats.o xdataframe.o xtable.o xtable_stats.o xxtable.o xutil.o xxdataframe.o
+obj    = kind.o constants.o util.o basic_stats.o random.o xbasic_stats.o table.o table_stats.o dataframe.o dataframe_stats.o xdataframe_stats.o xxdataframe_stats.o xdataframe.o xtable.o xtable_stats.o xxtable.o xutil.o xxdataframe.o xdataframe_loc.o
 
 all: $(executables)
 
@@ -36,6 +36,9 @@ xutil_gfort.exe: kind.o util.o xutil.o
 xxdataframe_gfort.exe: kind.o util.o dataframe.o xxdataframe.o
 	$(FC) -o xxdataframe_gfort.exe kind.o util.o dataframe.o xxdataframe.o $(FFLAGS)
 
+xdataframe_loc_gfort.exe: kind.o util.o dataframe.o xdataframe_loc.o
+	$(FC) -o xdataframe_loc_gfort.exe kind.o util.o dataframe.o xdataframe_loc.o $(FFLAGS)
+
 run: $(executables)
 	./xbasic_stats_gfort.exe
 	./xdataframe_stats_gfort.exe
@@ -46,6 +49,7 @@ run: $(executables)
 	./xxtable_gfort.exe
 	./xutil_gfort.exe
 	./xxdataframe_gfort.exe
+	./xdataframe_loc_gfort.exe
 
 clean:
 	rm -f $(executables) $(obj)
