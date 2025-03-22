@@ -1,6 +1,6 @@
 module dataframe_mod
 use kind_mod, only: dp
-use util_mod, only: default, split_string, seq
+use util_mod, only: default, split_string, seq, cbind
 use iso_fortran_env, only: output_unit
 implicit none
 private
@@ -34,7 +34,8 @@ type :: DataFrame
    character(len=nlen_columns), allocatable :: columns(:)
    real(kind=dp), allocatable    :: values(:,:)
    contains
-      procedure :: read_csv, display=>display_data, write_csv, irow, icol, loc
+      procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
+         loc, append_col, set_col
 
 end type DataFrame
 
@@ -94,6 +95,29 @@ integer, intent(in) :: ivec(:)
 type(DataFrame) :: df_new
 df_new = DataFrame(index=df%index(ivec), columns=df%columns, values=df%values(ivec, :))
 end function irow
+
+pure subroutine set_col(df, column, values)
+class(DataFrame), intent(in out) :: df
+character (len=*), intent(in) :: column
+real(kind=dp), intent(in) :: values(:)
+integer :: jcol
+jcol = findloc(df%columns, column, dim=1)
+if (jcol == 0) then
+   call append_col(df, column, values)
+else
+   df%values(:,jcol) = values
+end if
+end subroutine set_col
+
+pure subroutine append_col(df, column, values)
+class(DataFrame), intent(in out) :: df
+character (len=*), intent(in) :: column
+real(kind=dp), intent(in) :: values(:)
+character (len=nlen_columns) :: column_
+column_ = column
+df%columns = [df%columns, column_]
+df%values  = cbind(df%values, values)
+end subroutine append_col
 
 subroutine allocate_df(df, n1, n2, default_indices, default_columns)
 type(DataFrame), intent(out) :: df
