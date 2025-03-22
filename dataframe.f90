@@ -97,6 +97,8 @@ df_new = DataFrame(index=df%index(ivec), columns=df%columns, values=df%values(iv
 end function irow
 
 pure subroutine set_col(df, column, values)
+! append a column with specified values to DataFrame df if column is not in df,
+! and set the values of that column if it is already present
 class(DataFrame), intent(in out) :: df
 character (len=*), intent(in) :: column
 real(kind=dp), intent(in) :: values(:)
@@ -110,6 +112,7 @@ end if
 end subroutine set_col
 
 pure subroutine append_col(df, column, values)
+! append a column with specified values to DataFrame df
 class(DataFrame), intent(in out) :: df
 character (len=*), intent(in) :: column
 real(kind=dp), intent(in) :: values(:)
