@@ -5,7 +5,7 @@ implicit none
 private
 public :: default, assert_equal, write_merge, split_string, display, &
    print_time_elapsed, read_words_line, str, print_table, exe_name, &
-   join, seq
+   join, seq, cbind
 interface default
    module procedure default_int, default_real, default_logical, &
       default_character
@@ -266,5 +266,25 @@ do i=1, n
    vec(i) = first + i - 1
 end do
 end function seq
+
+pure function cbind(x,y) result(xy)
+! append column y(:) to matrix x(:,:)
+real(kind=dp), intent(in) :: x(:,:), y(:)
+real(kind=dp), allocatable :: xy(:,:)
+integer :: n1, n2
+n1 = size(x,1)
+if (size(y) /= n1) error stop "mismatched sizes in cbind"
+n2 = size(x,2)
+allocate (xy(n1, n2+1))
+xy(:,:n2)  = x
+xy(:,n2+1) = y 
+end function cbind
+
+! function appended_char_vec(x, y) result(xy)
+! character (len=*), intent(in) :: x(:)
+! character (len=*), intent(in) :: y
+! character (len=len(x)), allocatable :: xy(:)
+!  
+! end function appended_char_vec
 
 end module util_mod
