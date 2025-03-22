@@ -103,6 +103,7 @@ class(DataFrame), intent(in out) :: df
 character (len=*), intent(in) :: column
 real(kind=dp), intent(in) :: values(:)
 integer :: jcol
+if (size(values) /= nrow(df)) error stop "in set_col, size(values) /= nrow(df)"
 jcol = findloc(df%columns, column, dim=1)
 if (jcol == 0) then
    call append_col(df, column, values)
@@ -117,6 +118,7 @@ class(DataFrame), intent(in out) :: df
 character (len=*), intent(in) :: column
 real(kind=dp), intent(in) :: values(:)
 character (len=nlen_columns) :: column_
+if (size(values) /= nrow(df)) error stop "in append_col, size(values) /= nrow(df)"
 column_ = column
 df%columns = [df%columns, column_]
 df%values  = cbind(df%values, values)
