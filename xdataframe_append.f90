@@ -10,4 +10,7 @@ call df%set_col("C1", 100*df%values(:,1))
 call display(df)
 call df%set_col("C3", 10*df%values(:,1))
 call display(df)
+call df%set_col("C3", [10.0d0, 20.0d0])  ! will cause run-time error
+call df%append_col("abc", [10.0d0, 20.0d0]) ! will cause run-time error
+call display(df)
 end program xdataframe_append
