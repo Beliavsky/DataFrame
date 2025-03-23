@@ -10,8 +10,11 @@ interface default
    module procedure default_int, default_real, default_logical, &
       default_character
 end interface default
+interface cbind
+   module procedure cbind_mat_vec, cbind_mat_mat
+end interface cbind
 interface display
-   module procedure display_matrix
+   module procedure display_matrix, display_vector
 end interface display
 contains
 
@@ -154,20 +157,37 @@ do
 end do
 end subroutine split_string
 
-subroutine display_matrix(x, outu, fmt_r, fmt_header)
+subroutine display_matrix(x, outu, fmt_r, fmt_header, title)
 ! print a matrix
 real(kind=dp)    , intent(in)           :: x(:,:)
 integer          , intent(in), optional :: outu
-character (len=*), intent(in), optional :: fmt_r, fmt_header
+character (len=*), intent(in), optional :: fmt_r, fmt_header, title
 integer                                 :: i, outu_
 character (len=100)                     :: fmt_r_
 outu_  = default(output_unit, outu)
 fmt_r_ = default("(*(1x,f10.4))", fmt_r)
 if (present(fmt_header)) write(outu_, fmt_header)
+if (present(title)) write (outu_, "(a)") title
 do i=1,size(x,1)
    write(outu_,fmt_r_) x(i,:)
 end do
 end subroutine display_matrix
+
+subroutine display_vector(x, outu, fmt_r, fmt_header, title)
+! print a vector
+real(kind=dp)    , intent(in)           :: x(:)
+integer          , intent(in), optional :: outu
+character (len=*), intent(in), optional :: fmt_r, fmt_header, title
+integer                                 :: i, outu_
+character (len=100)                     :: fmt_r_
+outu_  = default(output_unit, outu)
+fmt_r_ = default("(*(1x,f10.4))", fmt_r)
+if (present(fmt_header)) write(outu_, fmt_header)
+if (present(title)) write (outu_, "(a)") title
+do i=1,size(x)
+   write(outu_,fmt_r_) x(i)
+end do
+end subroutine display_vector
 
 subroutine print_time_elapsed(old_time, outu)
 real(kind=dp), intent(in) :: old_time ! previously set by call cpu_time(old_time)
@@ -257,6 +277,7 @@ end do
 end function join
 
 pure function seq(first, last) result(vec)
+!! return an integer sequence from first through last
 integer, intent(in) :: first, last
 integer, allocatable :: vec(:)
 integer :: i, n
@@ -267,7 +288,7 @@ do i=1, n
 end do
 end function seq
 
-pure function cbind(x,y) result(xy)
+pure function cbind_mat_vec(x,y) result(xy)
 ! append column y(:) to matrix x(:,:)
 real(kind=dp), intent(in) :: x(:,:), y(:)
 real(kind=dp), allocatable :: xy(:,:)
@@ -278,7 +299,20 @@ n2 = size(x,2)
 allocate (xy(n1, n2+1))
 xy(:,:n2)  = x
 xy(:,n2+1) = y 
-end function cbind
+end function cbind_mat_vec
+
+pure function cbind_mat_mat(x,y) result(xy)
+! append columns of y(:,:) to matrix x(:,:)
+real(kind=dp), intent(in) :: x(:,:), y(:,:)
+real(kind=dp), allocatable :: xy(:,:)
+integer :: n1, n2
+n1 = size(x,1)
+if (size(y,1) /= n1) error stop "mismatched sizes in cbind"
+n2 = size(x,2)
+allocate (xy(n1, n2+size(y,2)))
+xy(:,:n2)  = x
+xy(:,n2+1:) = y 
+end function cbind_mat_mat
 
 ! function appended_char_vec(x, y) result(xy)
 ! character (len=*), intent(in) :: x(:)
