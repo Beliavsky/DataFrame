@@ -11,7 +11,7 @@ interface default
       default_character
 end interface default
 interface cbind
-   module procedure cbind_mat_vec, cbind_mat_mat
+   module procedure cbind_vec_vec, cbind_mat_vec, cbind_mat_mat
 end interface cbind
 interface display
    module procedure display_matrix, display_vector
@@ -288,8 +288,18 @@ do i=1, n
 end do
 end function seq
 
+pure function cbind_vec_vec(x,y) result(xy)
+! return a matrix whose columns are x(:) and y(:)
+real(kind=dp), intent(in) :: x(:), y(:)
+real(kind=dp), allocatable :: xy(:,:)
+integer :: n
+n = size(x,1)
+if (size(y) /= n) error stop "mismatched sizes in cbind"
+xy = reshape([x, y], [n, 2])
+end function cbind_vec_vec
+
 pure function cbind_mat_vec(x,y) result(xy)
-! append column y(:) to matrix x(:,:)
+! append vector y(:) to matrix x(:,:)
 real(kind=dp), intent(in) :: x(:,:), y(:)
 real(kind=dp), allocatable :: xy(:,:)
 integer :: n1, n2
