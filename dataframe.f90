@@ -35,7 +35,7 @@ type :: DataFrame
    real(kind=dp), allocatable    :: values(:,:)
    contains
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
-         loc, append_col, set_col
+         loc, append_col, append_cols, set_col
 
 end type DataFrame
 
@@ -123,6 +123,19 @@ column_ = column
 df%columns = [df%columns, column_]
 df%values  = cbind(df%values, values)
 end subroutine append_col
+
+pure subroutine append_cols(df, columns, values)
+! append a column with specified values to DataFrame df
+class(DataFrame), intent(in out) :: df
+character (len=*), intent(in) :: columns(:)
+real(kind=dp), intent(in) :: values(:,:)
+character (len=nlen_columns), allocatable :: columns_(:)
+if (size(values, 1) /= nrow(df)) error stop "in append_cols, size(values) /= nrow(df)"
+if (size(values, 2) /= size(columns)) error stop "in append_cols, size(values, 2) /= size(columns)"
+columns_ = columns
+df%columns = [df%columns, columns_]
+df%values  = cbind(df%values, values)
+end subroutine append_cols
 
 subroutine allocate_df(df, n1, n2, default_indices, default_columns)
 type(DataFrame), intent(out) :: df
