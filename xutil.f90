@@ -26,5 +26,6 @@ open (newunit=iu, file="util.dat", action="read", status="old")
 call read_words_line(iu, words)
 print*,"words read: ", words
 print*,"executable: " // trim(exe_name())
-print*,seq(3, 8)
+print "('seq(2, 10) =',*(1x,i0))", seq(2, 10)
+print "('seq(2, 10, 3) =',*(1x,i0))", seq(2, 10, 3)
 end program xutil
