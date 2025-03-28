@@ -570,6 +570,7 @@ type(DataFrame) :: df_new
 ! print*,"df%values(1:nrow(df):stride, :)", df%values(1:nrow(df):stride, :)
 ! in the line below, some parentheses are added to work around
 ! compiler bugs
+if (stride == 0) error stop "in subset_stride, stride must nost equal 0"
 df_new = DataFrame(index=(df%index(1:nrow(df):stride)), &
    columns=df%columns, values = (df%values(1:nrow(df):stride, :)))
 end function subset_stride
