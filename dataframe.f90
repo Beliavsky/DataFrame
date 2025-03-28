@@ -6,7 +6,7 @@ implicit none
 private
 public :: DataFrame, nrow, ncol, print_summary, random, operator(*), &
    operator(/), operator(+), operator(-), display, allocate_df, &
-   operator(**), shape, blank_line_before_display
+   operator(**), shape, blank_line_before_display, subset_stride
 integer, parameter :: nlen_columns = 100, nrows_print = 10 ! number of rows to print by default.
 logical, save :: blank_line_before_display = .true.
 interface display
@@ -281,7 +281,7 @@ end subroutine read_csv
 ! An optional logical argument 'print_all' may be provided. If it is present
 ! and set to .true., then all rows are printed.
 !------------------------------------------------------------------
-subroutine display_data(self, print_all, fmt_ir, fmt_header, fmt_trailer, title)
+impure elemental subroutine display_data(self, print_all, fmt_ir, fmt_header, fmt_trailer, title)
 class(DataFrame), intent(in) :: self
 logical, intent(in), optional :: print_all
 character (len=*), intent(in), optional :: fmt_ir, fmt_header, fmt_trailer, title
@@ -548,11 +548,12 @@ function power_df_n(df, n) result(res)
 integer        , intent(in) :: n
 type(DataFrame), intent(in) :: df
 type(DataFrame)             :: res
+
 res = df
 if (allocated(res%values)) res%values = res%values**n
 end function power_df_n
 
-function power_df_x(df, x) result(res)
+elemental function power_df_x(df, x) result(res)
 ! return df**x element-wise
 real(kind=dp), intent(in)   :: x
 type(DataFrame), intent(in) :: df
@@ -560,4 +561,16 @@ type(DataFrame)             :: res
 res = df
 if (allocated(res%values)) res%values = res%values**x
 end function power_df_x
+
+elemental function subset_stride(df, stride) result(df_new)
+type(DataFrame), intent(in) :: df
+integer, intent(in) :: stride
+type(DataFrame) :: df_new
+! print*,"df%index(1:nrow(df):stride)", df%index(1:nrow(df):stride)
+! print*,"df%values(1:nrow(df):stride, :)", df%values(1:nrow(df):stride, :)
+! in the line below, some parentheses are added to work around
+! compiler bugs
+df_new = DataFrame(index=(df%index(1:nrow(df):stride)), &
+   columns=df%columns, values = (df%values(1:nrow(df):stride, :)))
+end function subset_stride
 end module dataframe_mod
