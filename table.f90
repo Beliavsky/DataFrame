@@ -3,7 +3,7 @@ use kind_mod, only: dp
 use util_mod, only: default, assert_equal
 implicit none
 private
-public :: Table, create_table, t, display, display_data
+public :: Table, create_table, t, display
 interface display
    module procedure display_sub
 end interface display
