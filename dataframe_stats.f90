@@ -1,10 +1,23 @@
 module dataframe_stats_mod
 use kind_mod, only: dp
 use dataframe_mod, only: DataFrame, nrow
+use table_mod
+use table_stats_mod, only: stats_table
+use basic_stats_mod, only: stats
 implicit none
 private
-public :: simple_ret, moving_sum, moving_average
+public :: simple_ret, moving_sum, moving_average, stats ! , stats_df
+interface stats
+   module procedure stats_df
+end interface stats
 contains
+
+function stats_df(funcs, df) result(xtable)
+character (len=*), intent(in) :: funcs(:)
+type(DataFrame), intent(in) :: df
+type(Table)                 :: xtable
+xtable = stats_table(funcs, df%values, columns=df%columns)
+end function stats_df
 
 function simple_ret(df) result(df_ret)
 type(DataFrame), intent(in) :: df
