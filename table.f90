@@ -10,6 +10,7 @@ end interface display
 
 integer, parameter :: len_index = 20 ! length of index strings
 integer, parameter :: nrows_print = 10 ! # of rows to print by default.
+logical, save :: blank_line_before_display = .true.
 
 !---------------------------------------
 ! A minimal Table derived type.
@@ -176,7 +177,7 @@ fmt_ir_     = default("(a20,*(1x,f10.4))", fmt_ir)
 fmt_header_ = default("(a20,*(1x,a10))",   fmt_header)
 print_all_  = default(.false., print_all)
 total       = size(self%index)
-
+if (blank_line_before_display) write(*,*)
 if (present(title)) write(*,"(a)") title
 ! Print header
 write(*,fmt_header_) trim(self%index_name), self%columns
