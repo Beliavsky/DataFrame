@@ -3,12 +3,13 @@ use kind_mod, only: dp
 use util_mod, only: default, assert_equal
 implicit none
 private
-public :: Table, create_table, t, display
+public :: Table, create_table, t, display, display_data
+interface display
+   module procedure display_sub
+end interface display
 
-! Named constant for the length of the index strings.
-integer, parameter :: len_index = 20
-! Number of rows to print by default.
-integer, parameter :: nrows_print = 10
+integer, parameter :: len_index = 20 ! length of index strings
+integer, parameter :: nrows_print = 10 ! # of rows to print by default.
 
 !---------------------------------------
 ! A minimal Table derived type.
@@ -148,18 +149,17 @@ do i = 1, nrows
       read(tokens(j+1), *) self%values(i,j)
    end do
 end do
-
 close(unit)
 end subroutine read_csv
 
-subroutine display(xtable, print_all, fmt_ir, fmt_header, &
+subroutine display_sub(xtable, print_all, fmt_ir, fmt_header, &
 fmt_trailer, title)
 type(Table), intent(in) :: xtable
 logical, intent(in), optional :: print_all
 character(len=*), intent(in), optional :: fmt_ir, fmt_header, fmt_trailer, title
 call display_data(xtable, print_all=print_all, fmt_ir=fmt_ir, &
 fmt_header=fmt_header, fmt_trailer=fmt_trailer, title=title)
-end subroutine display
+end subroutine display_sub
 
 !------------------------------------------------------------------
 ! display
