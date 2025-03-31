@@ -15,6 +15,9 @@ real(kind=dp), parameter :: bad_value = -huge(1.0d0)
 interface stats
    module procedure stats_many_vec, stats_many_mat
 end interface stats
+interface print_basic_stats
+   module procedure print_basic_stats_vec, print_basic_stats_mat
+end interface print_basic_stats
 contains
 
 function stats_many_vec(funcs, x) result(y)
@@ -146,16 +149,60 @@ real(kind=dp)             :: stats(nbasic_stats)
 stats = [mean(x), sd(x), skew(x), kurtosis(x), minval(x), maxval(x)]
 end function basic_stats
 
-subroutine print_basic_stats(x, outu, fmt_header)
+subroutine print_basic_stats_vec(x, outu, fmt_header, fmt_trailer, &
+   title, fmt_r, fmt_stats_names)
+! print stats on a 1-D array
 real(kind=dp), intent(in) :: x(:)
 integer, intent(in), optional :: outu
-character (len=*), intent(in), optional :: fmt_header
+character (len=*), intent(in), optional :: fmt_header, fmt_trailer, &
+   title, fmt_r, fmt_stats_names
+character (len=100) :: fmt_r_, fmt_stats_names_
 integer :: i, outu_
+if (present(fmt_stats_names)) then
+   fmt_stats_names_ = fmt_stats_names
+else
+   fmt_stats_names_ = "(*(a10))"
+end if
+if (present(fmt_r)) then
+   fmt_r_ = fmt_r
+else
+   fmt_r_ = "(*(f10.4))"
+end if
 outu_ = default(output_unit, outu)
 if (present(fmt_header)) write (outu_, fmt_header)
-write (outu_, "(*(a10))") (trim(basic_stats_names(i)), i=1,nbasic_stats)
-write (outu_, "(*(f10.6))") basic_stats(x)
-end subroutine print_basic_stats
+if (present(title)) write (outu_, "(a)") title
+write (outu_, fmt_stats_names_) (trim(basic_stats_names(i)), i=1,nbasic_stats)
+write (outu_, fmt_r_) basic_stats(x)
+end subroutine print_basic_stats_vec
+
+subroutine print_basic_stats_mat(x, labels, outu, &
+   fmt_header, fmt_trailer, title, fmt_cr, fmt_stats_names)
+! print stats on a 2-D array
+real(kind=dp), intent(in) :: x(:,:)
+character (len=*), intent(in) :: labels(:)
+integer, intent(in), optional :: outu
+character (len=*), intent(in), optional :: fmt_header, fmt_trailer, &
+   title, fmt_cr, fmt_stats_names
+character (len=100) :: fmt_cr_, fmt_stats_names_
+integer :: i, outu_
+if (present(fmt_stats_names)) then
+   fmt_stats_names_ = fmt_stats_names
+else
+   fmt_stats_names_ = "(*(a10))"
+end if
+if (present(fmt_cr)) then
+   fmt_cr_ = fmt_cr
+else
+   fmt_cr_ = "(*(f10.4))"
+end if
+outu_ = default(output_unit, outu)
+if (present(fmt_header)) write (outu_, fmt_header)
+if (present(title)) write (outu_, "(a)") title
+write (outu_, fmt_stats_names_) "", (trim(basic_stats_names(i)), i=1,nbasic_stats)
+do i=1,size(x, 2)
+   write (outu_, fmt_cr_) trim(labels(i)), basic_stats(x(:,i))
+end do
+end subroutine print_basic_stats_mat
 
 pure function correl(x, y) result(corr_xy)
 ! Returns the linear Pearson correlation of x(:) and y(:)
