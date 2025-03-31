@@ -29,7 +29,7 @@ end type Table
 contains
 
 elemental function ncol(xtable) result(num_col)
-! return the # of columns
+! return the # of columns of a table
 type(Table), intent(in) :: xtable
 integer                 :: num_col
 if (allocated(xtable%values)) then
