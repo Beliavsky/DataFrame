@@ -28,6 +28,17 @@ end type Table
 
 contains
 
+elemental function ncol(xtable) result(num_col)
+! return the # of columns
+type(Table), intent(in) :: xtable
+integer                 :: num_col
+if (allocated(xtable%values)) then
+   num_col = size(xtable%values, 2)
+else
+   num_col = -1
+end if
+end function ncol
+
 !------------------------------------------------------------------
 ! Utility: split_string
 !------------------------------------------------------------------
@@ -180,11 +191,12 @@ total       = size(self%index)
 if (blank_line_before_display) write(*,*)
 if (present(title)) write(*,"(a)") title
 ! Print header
-write(*,fmt_header_) trim(self%index_name), self%columns
+write(*,fmt_header_) trim(self%index_name), &
+   (trim(self%columns(i)), i=1, ncol(self))
 
 if (print_all_) then
    do i = 1, total
-      write(*,fmt_ir_) self%index(i), self%values(i,:)
+      write(*,fmt_ir_) trim(self%index(i)), self%values(i,:)
    end do
 else
    if (total <= nrows_print) then
