@@ -18,6 +18,9 @@ end interface stats
 interface print_basic_stats
    module procedure print_basic_stats_vec, print_basic_stats_mat
 end interface print_basic_stats
+interface acf
+   module procedure acf_vec, acf_mat
+end interface acf
 contains
 
 function stats_many_vec(funcs, x) result(y)
@@ -228,7 +231,7 @@ else
 end if
 end function correl
 
-pure function acf(x, nacf) result(xacf)
+pure function acf_vec(x, nacf) result(xacf)
 ! return the autocorrelations at lags 1 through nacf
 real(kind=dp), intent(in) :: x(:)         ! Input array
 integer, intent(in) :: nacf               ! Number of autocorrelations to compute
@@ -243,7 +246,18 @@ denom = sum(xdm**2)
 do lag = 1, nacf
    xacf(lag) = sum(xdm(1:n-lag) * xdm(lag+1:n)) / denom
 end do
-end function acf
+end function acf_vec
+
+pure function acf_mat(x, nacf) result(xacf)
+! return the autocorrelations at lags 1 through nacf
+real(kind=dp), intent(in) :: x(:,:)       ! Input array
+integer, intent(in) :: nacf               ! Number of autocorrelations to compute
+real(kind=dp) :: xacf(nacf,size(x,2))     ! Output array for autocorrelations
+integer :: icol
+do icol=1,size(x,2)
+   xacf(:,icol) = acf(x(:,icol), nacf)
+end do
+end function acf_mat
 
 subroutine print_corr_mat(x, col_names, outu, fmt_col_names, fmt_row, &
    fmt_header, fmt_trailer)
