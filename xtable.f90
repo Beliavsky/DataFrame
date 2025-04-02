@@ -1,5 +1,5 @@
 program test_table
-   use table_mod, only: Table
+   use table_mod, only: Table, display
    implicit none
 
    type(Table) :: tbl
@@ -23,5 +23,5 @@ program test_table
    ! 4) Write the table to a new CSV file.
    call tbl%write_csv(fname_out)
    print *, "Table data written to:", fname_out
-
+call display(tbl)
 end program test_table
