@@ -2,7 +2,7 @@ program xbasic_stats
 use        kind_mod, only: dp
 use basic_stats_mod, only: mean, sd, variance, mean_and_sd, correl, &
                            stats, corr_mat, rms, moving_sum, &
-                           moving_average, print_corr_mat
+                           moving_average, print_corr_mat, print_cov_mat
 use      random_mod, only: random_normal
 use        util_mod, only: display
 integer, parameter :: n = 10**6, ncol=3
@@ -44,5 +44,8 @@ call print_corr_mat(xmat, col_names=["a", "b", "c"], &
    fmt_header="(/,'correlations')", fmt_trailer="('end', /)")
 call print_corr_mat(xmat, col_names=["a", "b", "c"], &
    fmt_header="(/,'correlations')", fmt_col_names="(*(a6,:,1x))", &
+   fmt_row="(a6, *(1x,f6.2))")
+call print_cov_mat(xmat, col_names=["a", "b", "c"], &
+   fmt_header="(/,'covariances')", fmt_col_names="(*(a6,:,1x))", &
    fmt_row="(a6, *(1x,f6.2))")
 end program xbasic_stats
