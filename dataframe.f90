@@ -6,7 +6,7 @@ implicit none
 private
 public :: DataFrame, nrow, ncol, print_summary, random, operator(*), &
    operator(/), operator(+), operator(-), display, allocate_df, &
-   operator(**), shape, blank_line_before_display, subset_stride
+   operator(**), shape, subset_stride
 integer, parameter :: nlen_columns = 100, nrows_print = 10 ! number of rows to print by default.
 logical, save :: blank_line_before_display = .true.
 interface display
@@ -36,12 +36,12 @@ type :: DataFrame
    contains
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
          loc, append_col, append_cols, set_col
-
 end type DataFrame
 
 contains
 
 pure function shape(df) result(ishape)
+! return a 2-element array with the number of rows and columns of the dataframe
 type(DataFrame), intent(in) :: df
 integer                     :: ishape(2)
 ishape = [nrow(df), ncol(df)]
