@@ -1,6 +1,6 @@
 program xdataframe_stats
 use       dataframe_mod, only: DataFrame, print_summary, operator(*)
-use dataframe_stats_mod, only: simple_ret
+use dataframe_stats_mod, only: simple_ret, cor
 use     table_stats_mod, only: basic_stats_table, corr_table
 use           table_mod, only: Table, display
 use kind_mod, only: dp
@@ -17,4 +17,5 @@ ret_stats = basic_stats_table(df_ret%values, df_ret%columns, &
 call display(ret_stats, fmt_trailer="()")
 call display(corr_table(df_ret%values,df_ret%columns), &
    title="return correlations")
+call display(cor(df_ret))
 end program xdataframe_stats
