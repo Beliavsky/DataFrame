@@ -7,7 +7,7 @@ private
 public :: mean, variance, sd, mean_and_sd, kurtosis, basic_stats, &
    print_basic_stats, basic_stats_names, correl, acf, nbasic_stats, &
    stat, stats, corr_mat, rms, moving_sum, moving_average, &
-   print_corr_mat, skew
+   print_corr_mat, skew, cov, cov_mat, print_cov_mat
 integer, parameter :: nbasic_stats = 6
 character (len=*), parameter :: basic_stats_names(nbasic_stats) = &
    [character(len=4) :: "mean", "sd", "skew", "kurt", "min", "max"]
@@ -231,6 +231,21 @@ else
 end if
 end function correl
 
+pure function cov(x, y) result(cov_xy)
+! Returns the covariance of two 1D arrays
+real(kind=dp), intent(in) :: x(:), y(:)
+real(kind=dp) :: cov_xy
+real(kind=dp) :: x_mean, y_mean
+integer :: n
+n = size(x)
+if (n /= size(y) .or. n == 0) then
+   error stop "x and y must have same size > 0 in cov"
+end if
+x_mean = sum(x) / n
+y_mean = sum(y) / n
+cov_xy = sum((x - x_mean) * (y - y_mean))
+end function cov
+
 pure function acf_vec(x, nacf) result(xacf)
 ! return the autocorrelations at lags 1 through nacf
 real(kind=dp), intent(in) :: x(:)         ! Input array
@@ -275,6 +290,22 @@ call print_table(corr_mat(x), row_names=col_names, col_names=col_names, &
    fmt_col_names=fmt_col_names_, fmt_row=fmt_row_)
 end subroutine print_corr_mat
 
+subroutine print_cov_mat(x, col_names, outu, fmt_col_names, fmt_row, &
+   fmt_header, fmt_trailer)
+! print the covariance matrix of the columns of x(:,:)
+real(kind=dp), intent(in) :: x(:,:)
+character (len=*), intent(in) :: col_names(:)
+integer          , intent(in), optional :: outu ! output unit
+character (len=*), intent(in), optional :: fmt_header, fmt_trailer, &
+   fmt_col_names, fmt_row
+character (len=100) :: fmt_col_names_, fmt_row_
+fmt_col_names_ = default("(*(a8,:,1x))", fmt_col_names)
+fmt_row_ = default("(a8, *(1x,f8.4))", fmt_row)
+call print_table(cov_mat(x), row_names=col_names, col_names=col_names, &
+   fmt_header=fmt_header, fmt_trailer=fmt_trailer, outu=outu, &
+   fmt_col_names=fmt_col_names_, fmt_row=fmt_row_)
+end subroutine print_cov_mat
+
 pure function corr_mat(x) result(cor)
     ! return the correlation matrix of the columns of x(:,:)
     real(kind=dp), intent(in) :: x(:,:)
@@ -299,6 +330,28 @@ pure function corr_mat(x) result(cor)
     cor = cor / spread(std_vec, dim=1, ncopies=p)
     cor = cor / spread(std_vec, dim=2, ncopies=p)
 end function corr_mat
+
+pure function cov_mat(x) result(xcov)
+    ! return the covariance matrix of the columns of x(:,:)
+    real(kind=dp), intent(in) :: x(:,:)
+    real(kind=dp)             :: xcov(size(x,2), size(x,2))
+    real(kind=dp)             :: mean_vec(size(x,2)), std_vec(size(x,2))
+    real(kind=dp)             :: centered_x(size(x,1), size(x,2))
+    integer                   :: n, p
+
+    n = size(x, 1)  ! Number of rows
+    p = size(x, 2)  ! Number of columns
+
+    ! Compute the mean of each column
+    mean_vec = sum(x, dim=1) / n
+
+    ! Center the matrix by subtracting the mean of each column
+    centered_x = x - spread(mean_vec, dim=1, ncopies=n)
+
+    ! Compute the standard deviation of each column
+    std_vec = sqrt(sum(centered_x**2, dim=1) / (n - 1))
+    xcov = matmul(transpose(centered_x), centered_x) / (n - 1)
+end function cov_mat
 
 pure function moving_sum(x, k) result(xsum)
 ! return a moving sum of x(:) with k terms, using fewer terms for i < k
