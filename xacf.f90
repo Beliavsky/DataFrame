@@ -20,8 +20,10 @@ xxacf = acf(x, nacf)
 do icol=1,ncol
    print "(i8,*(f8.4))", icol, ar1(icol), xxacf(:, icol)
 end do
+! print autocorrelations of columns of array
 call print_acf(x, nacf, labels = ["a", "b"], title="autocorr", &
    fmt_header="()", fmt_trailer = "('done')")
+! print autocorrelations of univariate data
 call print_acf(x(:,1), nacf, label = "a", title="autocorr", &
    fmt_header="()", fmt_trailer = "('done')")
 end program xacf
