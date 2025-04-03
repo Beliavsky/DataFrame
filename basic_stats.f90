@@ -308,7 +308,7 @@ integer, intent(in) :: nacf               ! Number of autocorrelations to comput
 character (len=*), intent(in), optional :: title, labels(:), &
    fmt_header, fmt_trailer
 integer, intent(in), optional :: outu
-real(kind=dp) :: xacf(nacf,size(x,2))     
+real(kind=dp) :: xacf(nacf,size(x,2))
 integer :: iacf, outu_
 outu_ = default(output_unit, outu)
 if (present(fmt_header)) write (outu_, fmt_header)
