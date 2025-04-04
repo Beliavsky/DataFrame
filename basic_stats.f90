@@ -280,43 +280,49 @@ end do
 end function acf_mat
 
 subroutine print_acf_vec(x, nacf, label, outu, fmt_header, &
-   fmt_trailer, title)
+   fmt_trailer, title, fmt_acf, fmt_label)
 ! print the autocorrelations at lags 1 through nacf of x(:)
 real(kind=dp), intent(in) :: x(:)       ! Input array
 integer, intent(in) :: nacf             ! Number of autocorrelations to compute
 character (len=*), intent(in), optional :: title, label, &
-   fmt_header, fmt_trailer
+   fmt_header, fmt_trailer, fmt_acf, fmt_label
+character (len=100) :: fmt_acf_, fmt_label_
 integer, intent(in), optional :: outu
 real(kind=dp) :: xacf(nacf)     
 integer :: iacf, outu_
 outu_ = default(output_unit, outu)
+fmt_label_ = default("(6x,a8)", fmt_label)
 if (present(fmt_header)) write (outu_, fmt_header)
 if (present(title)) write (outu_, "(a)") title
-if (present(label)) write (outu_,"(6x,a8)") label
+if (present(label)) write (outu_,fmt_label_) label
+fmt_acf_ = default("('ACF_', i2.2, f8.4)", fmt_acf)
 xacf = acf_vec(x, nacf)
 do iacf=1,nacf
-   write (outu_, "('ACF_', i2.2, *(f8.4))") iacf, xacf(iacf)
+   write (outu_, fmt_acf_) iacf, xacf(iacf)
 end do
 if (present(fmt_trailer)) write (outu_, fmt_trailer)
 end subroutine print_acf_vec
 
 subroutine print_acf_mat(x, nacf, labels, outu, fmt_header, &
-   fmt_trailer, title)
-! print the autocorrelations at lags 1 through nacf of the columns of x(:,:)
+   fmt_trailer, title, fmt_acf, fmt_labels)
+! print the autocorrelations at lags 1 t hrough nacf of the columns of x(:,:)
 real(kind=dp), intent(in) :: x(:,:)       ! Input array
 integer, intent(in) :: nacf               ! Number of autocorrelations to compute
 character (len=*), intent(in), optional :: title, labels(:), &
-   fmt_header, fmt_trailer
+   fmt_header, fmt_trailer, fmt_acf, fmt_labels
 integer, intent(in), optional :: outu
 real(kind=dp) :: xacf(nacf,size(x,2))
 integer :: iacf, outu_
+character (len=100) :: fmt_acf_, fmt_labels_
 outu_ = default(output_unit, outu)
+fmt_labels_ = default("(6x,*(a8))", fmt_labels)
 if (present(fmt_header)) write (outu_, fmt_header)
 if (present(title)) write (outu_, "(a)") title
-if (present(labels)) write (outu_,"(6x,*(a8))") labels
+if (present(labels)) write (outu_, fmt_labels_) labels
 xacf = acf_mat(x, nacf)
+fmt_acf_ = default("('ACF_', i2.2, *(f8.4))", fmt_acf)
 do iacf=1,nacf
-   write (outu_, "('ACF_', i2.2, *(f8.4))") iacf, xacf(iacf,:)
+   write (outu_, fmt_acf_) iacf, xacf(iacf,:)
 end do
 if (present(fmt_trailer)) write (outu_, fmt_trailer)
 end subroutine print_acf_mat
