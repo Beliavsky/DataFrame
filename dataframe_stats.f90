@@ -3,13 +3,17 @@ use kind_mod       , only: dp
 use dataframe_mod  , only: DataFrame, nrow
 use table_mod      , only: Table
 use table_stats_mod, only: stats_table
-use basic_stats_mod, only: stats, corr_mat
+use basic_stats_mod, only: stats, corr_mat, print_acf
 implicit none
 private
-public :: simple_ret, moving_sum, moving_average, stats, cor
+public :: simple_ret, moving_sum, moving_average, stats, cor, &
+   print_acf
 interface stats
    module procedure stats_df
 end interface stats
+interface print_acf
+   module procedure print_acf_df
+end interface print_acf
 contains
 
 elemental function cor(df) result(xtable)
@@ -69,4 +73,17 @@ do j=1,nr
    df_sum%values(j,:) = sum(df%values(i:j,:), dim=1)/(j-i+1.0_dp)
 end do
 end function moving_average
+
+impure elemental subroutine print_acf_df(df, nacf, fmt_header, &
+   fmt_trailer, title, fmt_acf, fmt_labels)
+! print the autocorrelations of the columns of a dataframe
+type(DataFrame)  , intent(in) :: df
+integer          , intent(in) :: nacf
+character (len=*), intent(in), optional :: title, fmt_header, &
+   fmt_trailer, fmt_acf, fmt_labels
+call print_acf(df%values, nacf, df%columns, title=title, &
+   fmt_header=fmt_header, fmt_trailer=fmt_trailer, &
+   fmt_acf=fmt_acf, fmt_labels=fmt_labels)
+end subroutine print_acf_df
+
 end module dataframe_stats_mod
