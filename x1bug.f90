@@ -25,14 +25,21 @@ impure elemental subroutine foo_df(nacf, outu, xstr)
 integer          , intent(in) :: nacf
 integer          , intent(in), optional :: outu
 character (len=*), intent(in), optional :: xstr
-if (present(xstr)) print*,"(4) in foo_df, xstr = '" // trim(xstr) // "'"
+if (present(xstr)) print*,"in foo_df, xstr = '" // trim(xstr) // "'"
 end subroutine foo_df
+
+impure elemental subroutine bar(nacf, outu, xstr)
+integer          , intent(in) :: nacf
+integer          , intent(in), optional :: outu
+character (len=*), intent(in), optional :: xstr
+if (present(xstr)) print*,"in bar, xstr = '" // trim(xstr) // "'"
+end subroutine bar
 
 end module m2_mod
 
-program xdataframe_stats
-use m2_mod, only: foo
+program main
+use m2_mod, only: foo, bar
 implicit none
-print*,"calling foo with no title"
-call foo(nacf = 5, xstr="()")
-end program xdataframe_stats
+call bar(nacf = 5, xstr="ab")
+call foo(nacf = 5, xstr="ab")
+end program main
