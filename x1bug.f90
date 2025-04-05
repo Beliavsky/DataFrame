@@ -4,6 +4,7 @@ private
 public :: dp
 integer, parameter :: dp = kind(1.0d0)
 end module kind_mod
+
 module util_mod
 use iso_fortran_env, only: output_unit
 use kind_mod, only: dp
@@ -354,6 +355,7 @@ end function cbind_mat_mat
 ! end function appended_char_vec
 
 end module util_mod
+
 module basic_stats_mod
 use iso_fortran_env, only: output_unit
 use kind_mod, only: dp
@@ -373,7 +375,7 @@ interface stats
    module procedure stats_many_vec, stats_many_mat
 end interface stats
 interface print_acf
-   module procedure print_acf_vec, print_acf_mat
+   module procedure print_acf_mat
 end interface print_acf   
 interface print_basic_stats
    module procedure print_basic_stats_vec, print_basic_stats_mat
@@ -635,30 +637,6 @@ do icol=1,size(x,2)
 end do
 end function acf_mat
 
-subroutine print_acf_vec(x, nacf, label, outu, fmt_header, &
-   fmt_trailer, title, fmt_acf, fmt_label)
-! print the autocorrelations at lags 1 through nacf of x(:)
-real(kind=dp), intent(in) :: x(:)       ! Input array
-integer, intent(in) :: nacf             ! Number of autocorrelations to compute
-character (len=*), intent(in), optional :: title, label, &
-   fmt_header, fmt_trailer, fmt_acf, fmt_label
-character (len=100) :: fmt_acf_, fmt_label_
-integer, intent(in), optional :: outu
-real(kind=dp) :: xacf(nacf)     
-integer :: iacf, outu_
-outu_ = default(output_unit, outu)
-fmt_label_ = default("(6x,a8)", fmt_label)
-if (present(fmt_header)) write (outu_, fmt_header)
-if (present(title)) write (outu_, "(a)") title
-if (present(label)) write (outu_,fmt_label_) label
-fmt_acf_ = default("('ACF_', i2.2, f8.4)", fmt_acf)
-xacf = acf_vec(x, nacf)
-do iacf=1,nacf
-   write (outu_, fmt_acf_) iacf, xacf(iacf)
-end do
-if (present(fmt_trailer)) write (outu_, fmt_trailer)
-end subroutine print_acf_vec
-
 subroutine print_acf_mat(x, nacf, labels, outu, fmt_header, &
    fmt_trailer, title, fmt_acf, fmt_labels)
 ! print the autocorrelations at lags 1 t hrough nacf of the columns of x(:,:)
@@ -679,7 +657,7 @@ end if
 if (present(title)) write (outu_, "(a)") title
 if (present(labels)) write (outu_, fmt_labels_) &
    (trim(labels(icol)), icol=1,size(labels))
-xacf = acf_mat(x, nacf)
+xacf = 0.0_dp ! acf_mat(x, nacf)
 fmt_acf_ = default("('ACF_', i2.2, *(f8.4))", fmt_acf)
 do iacf=1,nacf
    write (outu_, fmt_acf_) iacf, xacf(iacf,:)
@@ -856,6 +834,7 @@ if (present(fmt_header)) print*,"(4) in print_acf_df, fmt_header = '" // trim(fm
 end subroutine print_acf_df
 
 end module dataframe_stats_mod
+
 program xdataframe_stats
 use dataframe_stats_mod, only: print_acf
 implicit none
