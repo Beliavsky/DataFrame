@@ -8,7 +8,6 @@ end module kind_mod
 module basic_stats_mod
 use iso_fortran_env, only: output_unit
 use kind_mod, only: dp
-! use util_mod, only: default, print_table
 implicit none
 private
 public :: print_acf
@@ -36,8 +35,6 @@ end interface print_acf
 contains
 
 impure elemental subroutine print_acf_df(nacf, outu, fmt_header)
-! print the autocorrelations of the columns of a dataframe
-! type(DataFrame)  , intent(in) :: df
 integer          , intent(in) :: nacf
 integer          , intent(in), optional :: outu
 character (len=*), intent(in), optional :: fmt_header
@@ -51,5 +48,4 @@ use dataframe_stats_mod, only: print_acf
 implicit none
 print*,"calling print_acf with no title"
 call print_acf(nacf = 5, fmt_header="()")
-stop "here"
 end program xdataframe_stats
