@@ -312,13 +312,17 @@ character (len=*), intent(in), optional :: title, labels(:), &
    fmt_header, fmt_trailer, fmt_acf, fmt_labels
 integer, intent(in), optional :: outu
 real(kind=dp) :: xacf(nacf,size(x,2))
-integer :: iacf, outu_
+integer :: iacf, icol, outu_
 character (len=100) :: fmt_acf_, fmt_labels_
 outu_ = default(output_unit, outu)
 fmt_labels_ = default("(6x,*(a8))", fmt_labels)
-if (present(fmt_header)) write (outu_, fmt_header)
+if (present(fmt_header)) then
+   print*,"fmt_header = '" // trim(fmt_header) // "'" ! debug
+   write (outu_, fmt_header)
+end if
 if (present(title)) write (outu_, "(a)") title
-if (present(labels)) write (outu_, fmt_labels_) labels
+if (present(labels)) write (outu_, fmt_labels_) &
+   (trim(labels(icol)), icol=1,size(labels))
 xacf = acf_mat(x, nacf)
 fmt_acf_ = default("('ACF_', i2.2, *(f8.4))", fmt_acf)
 do iacf=1,nacf
