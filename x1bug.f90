@@ -379,21 +379,7 @@ integer, intent(in), optional :: outu
 real(kind=dp) :: xacf(nacf,size(x,2))
 integer :: iacf, icol, outu_
 character (len=100) :: fmt_acf_, fmt_labels_
-outu_ = default(output_unit, outu)
-fmt_labels_ = default("(6x,*(a8))", fmt_labels)
-if (present(fmt_header)) then
-   print*,"fmt_header = '" // trim(fmt_header) // "'" ! debug
-   write (outu_, fmt_header)
-end if
-if (present(title)) write (outu_, "(a)") title
-if (present(labels)) write (outu_, fmt_labels_) &
-   (trim(labels(icol)), icol=1,size(labels))
-xacf = 0.0_dp ! acf_mat(x, nacf)
-fmt_acf_ = default("('ACF_', i2.2, *(f8.4))", fmt_acf)
-do iacf=1,nacf
-   write (outu_, fmt_acf_) iacf, xacf(iacf,:)
-end do
-if (present(fmt_trailer)) write (outu_, fmt_trailer)
+return
 end subroutine print_acf_mat
 
 end module basic_stats_mod
