@@ -1,13 +1,4 @@
-module kind_mod
-implicit none
-private
-public :: dp
-integer, parameter :: dp = kind(1.0d0)
-end module kind_mod
-
 module basic_stats_mod
-use iso_fortran_env, only: output_unit
-use kind_mod, only: dp
 implicit none
 private
 public :: print_acf
@@ -17,7 +8,7 @@ end interface print_acf
 contains
 
 subroutine print_acf_mat(x, nacf, label)
-real(kind=dp), intent(in) :: x(:,:)
+real, intent(in) :: x(:,:)
 integer, intent(in) :: nacf
 character (len=*), intent(in), optional :: label
 end subroutine print_acf_mat
