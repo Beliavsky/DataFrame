@@ -347,19 +347,12 @@ xy(:,:n2)  = x
 xy(:,n2+1:) = y 
 end function cbind_mat_mat
 
-! function appended_char_vec(x, y) result(xy)
-! character (len=*), intent(in) :: x(:)
-! character (len=*), intent(in) :: y
-! character (len=len(x)), allocatable :: xy(:)
-!  
-! end function appended_char_vec
-
 end module util_mod
 
 module basic_stats_mod
 use iso_fortran_env, only: output_unit
 use kind_mod, only: dp
-use util_mod, only: default, print_table
+! use util_mod, only: default, print_table
 implicit none
 private
 public :: print_acf
@@ -368,10 +361,10 @@ interface print_acf
 end interface print_acf
 contains
 
-subroutine print_acf_mat(x, nacf, labels, fmt_header)
+subroutine print_acf_mat(x, nacf, label)
 real(kind=dp), intent(in) :: x(:,:)
 integer, intent(in) :: nacf
-character (len=*), intent(in), optional :: labels(:), fmt_header
+character (len=*), intent(in), optional :: label
 end subroutine print_acf_mat
 
 end module basic_stats_mod
