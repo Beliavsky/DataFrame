@@ -370,16 +370,11 @@ contains
 
 subroutine print_acf_mat(x, nacf, labels, outu, fmt_header, &
    fmt_trailer, title, fmt_acf, fmt_labels)
-! print the autocorrelations at lags 1 t hrough nacf of the columns of x(:,:)
-real(kind=dp), intent(in) :: x(:,:)       ! Input array
-integer, intent(in) :: nacf               ! Number of autocorrelations to compute
+real(kind=dp), intent(in) :: x(:,:)
+integer, intent(in) :: nacf
 character (len=*), intent(in), optional :: title, labels(:), &
    fmt_header, fmt_trailer, fmt_acf, fmt_labels
 integer, intent(in), optional :: outu
-real(kind=dp) :: xacf(nacf,size(x,2))
-integer :: iacf, icol, outu_
-character (len=100) :: fmt_acf_, fmt_labels_
-return
 end subroutine print_acf_mat
 
 end module basic_stats_mod
