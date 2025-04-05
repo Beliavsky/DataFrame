@@ -368,13 +368,12 @@ interface print_acf
 end interface print_acf
 contains
 
-subroutine print_acf_mat(x, nacf, labels, outu, fmt_header, &
+subroutine print_acf_mat(x, nacf, labels, fmt_header, &
    fmt_trailer, title, fmt_acf, fmt_labels)
 real(kind=dp), intent(in) :: x(:,:)
 integer, intent(in) :: nacf
 character (len=*), intent(in), optional :: title, labels(:), &
    fmt_header, fmt_trailer, fmt_acf, fmt_labels
-integer, intent(in), optional :: outu
 end subroutine print_acf_mat
 
 end module basic_stats_mod
