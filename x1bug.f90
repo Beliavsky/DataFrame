@@ -366,11 +366,6 @@ public :: print_acf
 interface print_acf
    module procedure print_acf_mat
 end interface print_acf
-
-integer, parameter :: nbasic_stats = 6
-character (len=*), parameter :: basic_stats_names(nbasic_stats) = &
-   [character(len=4) :: "mean", "sd", "skew", "kurt", "min", "max"]
-real(kind=dp), parameter :: bad_value = -huge(1.0d0)
 contains
 
 subroutine print_acf_mat(x, nacf, labels, outu, fmt_header, &
