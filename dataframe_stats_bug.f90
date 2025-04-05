@@ -82,10 +82,7 @@ integer          , intent(in) :: nacf
 integer          , intent(in), optional :: outu
 character (len=*), intent(in), optional :: title, fmt_header, &
    fmt_trailer, fmt_acf, fmt_labels
-if (present(fmt_header)) print*,"in print_acf_df, fmt_header = " // trim(fmt_header)
-call print_acf(df%values, nacf, df%columns, title=title, &
-   fmt_header=fmt_header, fmt_trailer=fmt_trailer, &
-   fmt_acf=fmt_acf, fmt_labels=fmt_labels)
+if (present(fmt_header)) print*,"in print_acf_df, fmt_header = '" // trim(fmt_header) // "'"
 end subroutine print_acf_df
 
 end module dataframe_stats_mod
