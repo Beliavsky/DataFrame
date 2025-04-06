@@ -317,7 +317,6 @@ character (len=100) :: fmt_acf_, fmt_labels_
 outu_ = default(output_unit, outu)
 fmt_labels_ = default("(6x,*(a8))", fmt_labels)
 if (present(fmt_header)) then
-   print*,"fmt_header = '" // trim(fmt_header) // "'" ! debug
    write (outu_, fmt_header)
 end if
 if (present(title)) write (outu_, "(a)") title
