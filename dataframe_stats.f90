@@ -74,11 +74,12 @@ do j=1,nr
 end do
 end function moving_average
 
-impure elemental subroutine print_acf_df(df, nacf, fmt_header, &
-   fmt_trailer, title, fmt_acf, fmt_labels)
+impure elemental subroutine print_acf_df(df, nacf, outu, &
+   fmt_header, fmt_trailer, title, fmt_acf, fmt_labels)
 ! print the autocorrelations of the columns of a dataframe
 type(DataFrame)  , intent(in) :: df
 integer          , intent(in) :: nacf
+integer          , intent(in), optional :: outu
 character (len=*), intent(in), optional :: title, fmt_header, &
    fmt_trailer, fmt_acf, fmt_labels
 call print_acf(df%values, nacf, df%columns, title=title, &
