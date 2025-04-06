@@ -22,18 +22,5 @@ call display(corr_table(df_ret%values,df_ret%columns), &
 call display(cor(df_ret))
 call print_acf(df_ret, nacf=5)
 call print_acf(df_ret**2, nacf=5)
-print*,"calling bug, fmt_header = '()'" ! debug
-call bug(df_ret%values, nacf=5, fmt_header="()")
-print*,"calling print_acf with no title"
-call print_acf(df_ret, nacf=5, fmt_header="()")
-stop "here"
-print*,"calling print_acf with no title, powers [1, 2]"
-call print_acf(df_ret**[1,2], nacf=5, fmt_header="()")
-stop "here (1)"
-print*,"calling print_acf(df_ret**[1,2], fmt_header = '()')" ! debug
-call print_acf(df_ret**[1,2], nacf=5, title=["ret   ","ret**2"], &
-   fmt_header="()")
-stop "here (2)"
-call print_acf(df_ret**[1,2], nacf=5, title=["ret   ","ret**2"], &
-   fmt_header="('abc')")
+call print_acf(df_ret**[1,2], nacf=5, title=["ret   ","ret**2"])
 end program xdataframe_stats
