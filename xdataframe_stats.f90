@@ -5,7 +5,6 @@ use       dataframe_mod, only: DataFrame, print_summary, operator(*), &
 use dataframe_stats_mod, only: simple_ret, cor, print_acf
 use     table_stats_mod, only: basic_stats_table, corr_table
 use           table_mod, only: Table, display
-use basic_stats_mod, only: bug
 implicit none
 character (len=*), parameter :: data_file = "spy_efa_eem_tlt.csv"
 type(DataFrame) :: df, df_ret
