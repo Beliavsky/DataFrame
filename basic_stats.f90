@@ -180,6 +180,7 @@ if (present(fmt_header)) write (outu_, fmt_header)
 if (present(title)) write (outu_, "(a)") title
 write (outu_, fmt_stats_names_) (trim(basic_stats_names(i)), i=1,nbasic_stats)
 write (outu_, fmt_r_) basic_stats(x)
+if (present(fmt_trailer)) write (outu_, fmt_trailer)
 end subroutine print_basic_stats_vec
 
 subroutine print_basic_stats_mat(x, labels, outu, &
