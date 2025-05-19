@@ -18,13 +18,10 @@ module random_mod
 
 contains
 
-  !------------------------------------------------------------
-  ! Function: random_normal
-  !
-  ! Returns a standard normal variate using the Box–Muller method.
-  !------------------------------------------------------------
   function random_normal_scalar() result(z)
-    real(kind=dp) :: z, u1, u2
+  ! Returns a standard normal variate using the Box–Muller method.
+    real(kind=dp) :: z
+    real(kind=dp) :: u1, u2
     if (have_saved) then
       z = saved_value
       have_saved = .false.
@@ -39,6 +36,7 @@ contains
   end function random_normal_scalar
 
 function random_normal_vec(n) result(z)
+! return 1D array of standard normal variates
 integer, intent(in) :: n
 real(kind=dp)       :: z(n)
 integer             :: i
@@ -48,6 +46,7 @@ end do
 end function random_normal_vec
 
 function random_normal_mat(n1, n2) result(z)
+! return 2D array of standard normal variates
 integer, intent(in) :: n1, n2
 real(kind=dp)       :: z(n1, n2)
 integer             :: i2
@@ -56,14 +55,10 @@ do i2=1,n2
 end do
 end function random_normal_mat
 
-  !------------------------------------------------------------
-  ! Function: random_gamma
-  !
+  recursive function random_gamma(a, b) result(x)
   ! Returns a Gamma random variate with shape parameter 'a'
   ! and scale parameter 'b' using the Marsaglia–Tsang algorithm.
   ! For a < 1 the algorithm uses the standard transformation.
-  !------------------------------------------------------------
-  recursive function random_gamma(a, b) result(x)
     real(kind=dp), intent(in) :: a, b
     real(kind=dp) :: x, d, c, u, v, z
     if (a < 1.0_dp) then
@@ -88,15 +83,11 @@ end function random_normal_mat
     end if
   end function random_gamma
 
-  !------------------------------------------------------------
-  ! Function: random_student_t
-  !
-  ! Returns a Student t variate with degrees-of-freedom 'dof'
+  function random_student_t_scalar(dof) result(t)
+  ! return a Student t variate with degrees-of-freedom 'dof'
   ! (of type real(kind=dp)).  This is achieved by generating
   ! Z ~ N(0,1) and V ~ chi-square(dof) (via Gamma(dof/2,2)),
   ! then computing t = Z/sqrt(V/dof).
-  !------------------------------------------------------------
-  function random_student_t_scalar(dof) result(t)
     real(kind=dp), intent(in) :: dof
     real(kind=dp) :: t, z, v
     z = random_normal()
@@ -105,6 +96,7 @@ end function random_normal_mat
   end function random_student_t_scalar
 
   function random_student_t_vec(n, dof) result(t)
+  ! return a 1D array of Student t variates
     integer, intent(in) :: n
     real(kind=dp), intent(in) :: dof
     real(kind=dp) :: t(n)
@@ -114,19 +106,26 @@ end function random_normal_mat
     end do
   end function random_student_t_vec
 
-subroutine random_seed_init(iseed, nburn, print_seed)
+subroutine random_seed_init(iseed, nburn, print_seed, xscale)
 ! Initializes the random number generator seed by setting each seed element 
-! to a predefined value plus iseed.
+! to a predefined value plus iseed, optionally burning variates
 integer, intent(in) :: iseed
-integer, intent(in), optional :: nburn
+integer, intent(in), optional :: nburn ! # of variates to burn
 logical, intent(in), optional :: print_seed
+! amount by which each element of the seed is shifted from the previous element
+real(kind=dp), intent(in), optional :: xscale 
 integer, allocatable :: seed(:)
 integer :: seed_size, i
-real(kind=dp) :: xran
+real(kind=dp) :: xran, xscale_
+if (present(xscale)) then
+   xscale_ = xscale
+else
+   xscale_ = 1.0e6_dp
+end if
 call random_seed(size=seed_size)
 allocate(seed(seed_size))
 do i = 1, seed_size
-  seed(i) = int(1.0e6_dp * real(i, kind=dp)) + iseed
+  seed(i) = int(xscale_ * real(i, kind=dp)) + iseed
 end do
 call random_seed(put=seed)
 if (present(nburn)) then
