@@ -82,7 +82,7 @@ integer          , intent(in) :: nacf
 integer          , intent(in), optional :: outu
 character (len=*), intent(in), optional :: title, fmt_header, &
    fmt_trailer, fmt_acf, fmt_labels
-call print_acf(df%values, nacf, df%columns, title=title, &
+call print_acf(df%values, nacf, df%columns, outu=outu, title=title, &
    fmt_header=fmt_header, fmt_trailer=fmt_trailer, &
    fmt_acf=fmt_acf, fmt_labels=fmt_labels)
 end subroutine print_acf_df
