@@ -543,12 +543,11 @@ res = df
 if (allocated(res%values)) res%values = res%values/n
 end function div_df_n
 
-function power_df_n(df, n) result(res)
+elemental function power_df_n(df, n) result(res)
 ! return df**n element-wise
 integer        , intent(in) :: n
 type(DataFrame), intent(in) :: df
 type(DataFrame)             :: res
-
 res = df
 if (allocated(res%values)) res%values = res%values**n
 end function power_df_n
