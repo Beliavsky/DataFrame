@@ -160,11 +160,13 @@ do
 end do
 end subroutine split_string
 
-subroutine display_matrix(x, outu, fmt_r, fmt_header, title)
+subroutine display_matrix(x, outu, fmt_r, fmt_header, fmt_trailer, &
+   title)
 ! print a matrix
 real(kind=dp)    , intent(in)           :: x(:,:)
 integer          , intent(in), optional :: outu
-character (len=*), intent(in), optional :: fmt_r, fmt_header, title
+character (len=*), intent(in), optional :: fmt_r, fmt_header, &
+                                           fmt_trailer, title
 integer                                 :: i, outu_
 character (len=100)                     :: fmt_r_
 outu_  = default(output_unit, outu)
@@ -174,6 +176,7 @@ if (present(title)) write (outu_, "(a)") title
 do i=1,size(x,1)
    write(outu_,fmt_r_) x(i,:)
 end do
+if (present(fmt_trailer)) write(outu_, fmt_trailer)
 end subroutine display_matrix
 
 subroutine display_vector(x, outu, fmt_r, fmt_header, title)
