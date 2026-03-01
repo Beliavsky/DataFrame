@@ -1,6 +1,7 @@
 module dataframe_mod
 use kind_mod, only: dp
 use util_mod, only: default, split_string, seq, cbind
+use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
 use iso_fortran_env, only: output_unit
 implicit none
 private
@@ -35,7 +36,7 @@ type :: DataFrame
    real(kind=dp), allocatable    :: values(:,:)
    contains
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
-         loc, append_col, append_cols, set_col, col_pos, row_pos, at, iat, set_at, set_iat
+         loc, append_col, append_cols, set_col, isna, fillna, dropna
 end type DataFrame
 
 contains
@@ -87,70 +88,6 @@ else
 end if
 df_new = DataFrame(index=rows_, columns=columns_, values=df%values(jrow, jcol))
 end function loc
-
-pure function row_pos(self, idx) result(irow)
-! return the row position (1..nrow) for index value idx
-class(DataFrame), intent(in) :: self
-integer, intent(in) :: idx
-integer :: irow
-irow = findloc(self%index, idx, dim=1)
-if (irow == 0) error stop "in row_pos, index not found"
-end function row_pos
-
-pure function col_pos(self, column) result(jcol)
-! return the column position (1..ncol) for column name
-class(DataFrame), intent(in) :: self
-character(len=*), intent(in) :: column
-integer :: jcol
-jcol = findloc(self%columns, column, dim=1)
-if (jcol == 0) error stop "in col_pos, column not found: " // trim(column)
-end function col_pos
-
-pure function iat(self, i, j) result(x)
-! return a scalar element by 1-based row/column positions
-class(DataFrame), intent(in) :: self
-integer, intent(in) :: i, j
-real(kind=dp) :: x
-if (i < 1 .or. i > nrow(self)) error stop "in iat, row position out of range"
-if (j < 1 .or. j > ncol(self)) error stop "in iat, column position out of range"
-x = self%values(i, j)
-end function iat
-
-pure function at(self, idx, column) result(x)
-! return a scalar element by index value and column name
-class(DataFrame), intent(in) :: self
-integer, intent(in) :: idx
-character(len=*), intent(in) :: column
-real(kind=dp) :: x
-integer :: i, j
-i = self%row_pos(idx)
-j = self%col_pos(column)
-x = self%values(i, j)
-end function at
-
-pure subroutine set_iat(self, i, j, x)
-! set a scalar element by 1-based row/column positions
-class(DataFrame), intent(in out) :: self
-integer, intent(in) :: i, j
-real(kind=dp), intent(in) :: x
-if (i < 1 .or. i > nrow(self)) error stop "in set_iat, row position out of range"
-if (j < 1 .or. j > ncol(self)) error stop "in set_iat, column position out of range"
-self%values(i, j) = x
-end subroutine set_iat
-
-pure subroutine set_at(self, idx, column, x)
-! set a scalar element by index value and column name
-class(DataFrame), intent(in out) :: self
-integer, intent(in) :: idx
-character(len=*), intent(in) :: column
-real(kind=dp), intent(in) :: x
-integer :: i, j
-i = self%row_pos(idx)
-j = self%col_pos(column)
-self%values(i, j) = x
-end subroutine set_at
-
-
 
 pure function irow(df, ivec) result(df_new)
 ! returns a dataframe with the subset of columns in ivec(:)
@@ -252,13 +189,27 @@ end function ncol
 !
 ! The header row begins with an empty token (before the first comma).
 !------------------------------------------------------------------
-subroutine read_csv(self, filename, max_col, max_rows)
+subroutine read_csv(self, filename, max_col, max_rows, na_values, empty_is_na)
+! Read CSV with header row and integer index column.
+! Missing values:
+! - empty tokens (if empty_is_na=.true.) become NaN
+! - tokens matching NA strings (case-insensitive) become NaN
+! - tokens that fail numeric parsing become NaN
 class(DataFrame), intent(inout) :: self
 character(len=*), intent(in)    :: filename
-integer, intent(in), optional :: max_col, max_rows
+integer, intent(in), optional   :: max_col, max_rows
+character(len=*), intent(in), optional :: na_values(:)
+logical, intent(in), optional   :: empty_is_na
 integer :: io, unit, i, j, nrows, ncols, maxlen
 character(len=1024) :: line
 character(:), allocatable :: tokens(:)
+character(:), allocatable :: tok
+real(kind=dp) :: nan, x
+logical :: empty_is_na_
+
+empty_is_na_ = .true.
+if (present(empty_is_na)) empty_is_na_ = empty_is_na
+nan = ieee_value(0.0_dp, ieee_quiet_nan)
 
 ! 1) Open the file.
 open(newunit=unit, file=filename, status='old', action='read', iostat=io)
@@ -283,13 +234,14 @@ if (ncols <= 0) then
    stop
 end if
 
-! Determine maximum length among the column name tokens.
+! Determine maximum length among the column name tokens (informational).
 maxlen = 0
 do i = 2, size(tokens)
    maxlen = max(maxlen, len_trim(tokens(i)))
 end do
 
-! Allocate columns
+! Allocate columns.
+if (allocated(self%columns)) deallocate (self%columns)
 allocate(self%columns(ncols))
 do i = 1, ncols
    self%columns(i) = tokens(i+1)
@@ -316,23 +268,262 @@ rewind(unit)
 read(unit, '(A)')  ! skip header
 
 ! 5) Allocate the index and values arrays.
+if (allocated(self%index)) deallocate (self%index)
+if (allocated(self%values)) deallocate (self%values)
 allocate(self%index(nrows), self%values(nrows, ncols))
 
 ! 6) Read each data row.
 do i = 1, nrows
    read(unit, '(A)', iostat=io) line
-   if (trim(line) == "") exit
+   if (io /= 0 .or. trim(line) == "") exit
    call split_string(line, ",", tokens)
-   ! First token is t<he index.
-   read(tokens(1), *) self%index(i)
+
+   ! First token is the index.
+   if (size(tokens) < 1) error stop "in read_csv: empty line after split_string"
+   tok = tokens(1)
+   if (token_is_na(tok, na_values, .false.)) then
+      error stop "in read_csv: missing index value"
+   end if
+   read(tok, *, iostat=io) self%index(i)
+   if (io /= 0) then
+      print *, "Error parsing index token on row", i, "in", filename
+      stop
+   end if
+
    ! Remaining tokens are the real values.
    do j = 1, ncols
-      read(tokens(j+1), *) self%values(i,j)
+      if (j+1 <= size(tokens)) then
+         tok = tokens(j+1)
+      else
+         tok = ""
+      end if
+
+      if (token_is_na(tok, na_values, empty_is_na_)) then
+         self%values(i,j) = nan
+      else
+         read(tok, *, iostat=io) x
+         if (io /= 0) then
+            self%values(i,j) = nan
+         else
+            self%values(i,j) = x
+         end if
+      end if
    end do
 end do
 
 close(unit)
 end subroutine read_csv
+
+
+pure function str_upper(str) result(out)
+! return str converted to uppercase (ASCII)
+character(len=*), intent(in) :: str
+character(len=len(str))      :: out
+integer :: i, c
+out = str
+do i = 1, len(str)
+   c = iachar(out(i:i))
+   if (c >= iachar('a') .and. c <= iachar('z')) out(i:i) = achar(c - 32)
+end do
+end function str_upper
+
+pure logical function token_is_na(tok, na_values, empty_is_na)
+! True if tok indicates a missing value.
+character(len=*), intent(in) :: tok
+character(len=*), intent(in), optional :: na_values(:)
+logical, intent(in) :: empty_is_na
+character(len=len(tok)) :: u
+integer :: k
+
+if (empty_is_na .and. len_trim(tok) == 0) then
+   token_is_na = .true.
+   return
+end if
+
+u = str_upper(adjustl(trim(tok)))
+
+select case (trim(u))
+case ("NA", "NAN", "NULL", "NONE", "N/A")
+   token_is_na = .true.
+   return
+case default
+end select
+
+token_is_na = .false.
+if (present(na_values)) then
+   do k = 1, size(na_values)
+      if (trim(u) == trim(str_upper(adjustl(trim(na_values(k)))))) then
+         token_is_na = .true.
+         return
+      end if
+   end do
+end if
+
+end function token_is_na
+
+function isna(self) result(mask)
+! return a logical mask indicating NaN values
+class(DataFrame), intent(in) :: self
+logical, allocatable :: mask(:,:)
+integer :: n1, n2
+
+if (.not. allocated(self%values)) then
+   allocate(mask(0,0))
+   return
+end if
+
+n1 = nrow(self)
+n2 = ncol(self)
+allocate(mask(n1, n2))
+mask = ieee_is_nan(self%values)
+end function isna
+
+subroutine fillna(self, value, method)
+! fill NaN values in-place
+class(DataFrame), intent(inout) :: self
+real(kind=dp), intent(in), optional :: value
+character(len=*), intent(in), optional :: method
+integer :: i, j, n1, n2
+real(kind=dp) :: last, nan
+character(len=:), allocatable :: mth
+
+if (.not. allocated(self%values)) return
+
+if (present(value) .and. present(method)) then
+   error stop "fillna: supply only one of value or method"
+end if
+if ((.not. present(value)) .and. (.not. present(method))) then
+   error stop "fillna: must supply value or method"
+end if
+
+n1 = nrow(self)
+n2 = ncol(self)
+nan = ieee_value(0.0_dp, ieee_quiet_nan)
+
+if (present(value)) then
+   do j = 1, n2
+      do i = 1, n1
+         if (ieee_is_nan(self%values(i,j))) self%values(i,j) = value
+      end do
+   end do
+   return
+end if
+
+mth = str_upper(adjustl(trim(method)))
+
+if (trim(mth) == "FFILL") then
+   do j = 1, n2
+      last = nan
+      do i = 1, n1
+         if (.not. ieee_is_nan(self%values(i,j))) then
+            last = self%values(i,j)
+         else
+            if (.not. ieee_is_nan(last)) self%values(i,j) = last
+         end if
+      end do
+   end do
+else if (trim(mth) == "BFILL") then
+   do j = 1, n2
+      last = nan
+      do i = n1, 1, -1
+         if (.not. ieee_is_nan(self%values(i,j))) then
+            last = self%values(i,j)
+         else
+            if (.not. ieee_is_nan(last)) self%values(i,j) = last
+         end if
+      end do
+   end do
+else
+   error stop "fillna: method must be ffill or bfill"
+end if
+
+end subroutine fillna
+
+function dropna(self, axis, how) result(df_new)
+! return a new DataFrame with rows or columns dropped based on NaNs
+class(DataFrame), intent(in) :: self
+character(len=*), intent(in), optional :: axis
+character(len=*), intent(in), optional :: how
+type(DataFrame) :: df_new
+character(len=:), allocatable :: ax, hw
+logical, allocatable :: keep_row(:), keep_col(:)
+integer :: n1, n2, i, j, k, nk
+
+if (.not. allocated(self%values)) then
+   allocate(df_new%index(0))
+   allocate(df_new%columns(0))
+   allocate(df_new%values(0,0))
+   return
+end if
+
+n1 = nrow(self)
+n2 = ncol(self)
+
+ax = str_upper(adjustl(trim(default("rows", axis))))
+hw = str_upper(adjustl(trim(default("any", how))))
+
+if (trim(ax) == "ROWS") then
+   allocate(keep_row(n1))
+   do i = 1, n1
+      if (trim(hw) == "ANY") then
+         keep_row(i) = .not. any(ieee_is_nan(self%values(i,:)))
+      else if (trim(hw) == "ALL") then
+         keep_row(i) = .not. all(ieee_is_nan(self%values(i,:)))
+      else
+         error stop "dropna: how must be any or all"
+      end if
+   end do
+
+   nk = count(keep_row)
+   allocate(df_new%index(nk))
+   allocate(df_new%columns(n2))
+   allocate(df_new%values(nk, n2))
+   df_new%columns = self%columns
+
+   k = 0
+   do i = 1, n1
+      if (keep_row(i)) then
+         k = k + 1
+         df_new%index(k) = self%index(i)
+         df_new%values(k,:) = self%values(i,:)
+      end if
+   end do
+
+else if (trim(ax) == "COLS" .or. trim(ax) == "COLUMNS") then
+   allocate(keep_col(n2))
+   do j = 1, n2
+      if (trim(hw) == "ANY") then
+         keep_col(j) = .not. any(ieee_is_nan(self%values(:,j)))
+      else if (trim(hw) == "ALL") then
+         keep_col(j) = .not. all(ieee_is_nan(self%values(:,j)))
+      else
+         error stop "dropna: how must be any or all"
+      end if
+   end do
+
+   nk = count(keep_col)
+   allocate(df_new%index(n1))
+   allocate(df_new%columns(nk))
+   allocate(df_new%values(n1, nk))
+   df_new%index = self%index
+
+   k = 0
+   do j = 1, n2
+      if (keep_col(j)) then
+         k = k + 1
+         df_new%columns(k) = self%columns(j)
+         df_new%values(:,k) = self%values(:,j)
+      end if
+   end do
+
+else
+   error stop "dropna: axis must be rows or cols"
+end if
+
+end function dropna
+
+
+
 
 !------------------------------------------------------------------
 ! display_data:
