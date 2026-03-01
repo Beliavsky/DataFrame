@@ -35,7 +35,8 @@ type :: DataFrame
    real(kind=dp), allocatable    :: values(:,:)
    contains
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
-         loc, append_col, append_cols, set_col, col_pos, row_pos, at, iat, set_at, set_iat
+         loc, append_col, append_cols, set_col, col_pos, row_pos, at, iat, set_at, set_iat, &
+         has_col, has_idx, drop_cols, drop_rows, rename_cols
 end type DataFrame
 
 contains
@@ -149,6 +150,128 @@ i = self%row_pos(idx)
 j = self%col_pos(column)
 self%values(i, j) = x
 end subroutine set_at
+
+logical function has_col(self, name)
+! return .true. if dataframe has a column with the given name
+class(DataFrame), intent(in) :: self
+character(len=*), intent(in) :: name
+integer :: j
+character(len=nlen_columns) :: key
+key = trim(name)
+j = findloc(self%columns, key, dim=1)
+has_col = (j > 0)
+end function has_col
+
+logical function has_idx(self, idx)
+! return .true. if dataframe has a row with the given index value
+class(DataFrame), intent(in) :: self
+integer, intent(in) :: idx
+integer :: i
+i = findloc(self%index, idx, dim=1)
+has_idx = (i > 0)
+end function has_idx
+
+function drop_cols(self, names, missing) result(df_new)
+! drop columns by name
+class(DataFrame), intent(in) :: self
+character(len=*), intent(in) :: names(:)
+character(len=*), intent(in), optional :: missing
+type(DataFrame) :: df_new
+logical, allocatable :: keep(:)
+integer, allocatable :: ivec_keep(:)
+integer :: k, j, n
+character(len=100) :: miss
+character(len=nlen_columns) :: key
+
+miss = trim(default("error", missing))
+miss = str_lower(miss)
+
+n = ncol(self)
+allocate(keep(n))
+keep = .true.
+
+do k = 1, size(names)
+   key = trim(names(k))
+   j = findloc(self%columns, key, dim=1)
+   if (j <= 0) then
+      if (miss == "ignore") cycle
+      error stop "drop_cols: column not found: "//trim(names(k))
+   end if
+   keep(j) = .false.
+end do
+
+ivec_keep = pack(seq(1, n), keep)
+df_new = self%icol(ivec_keep)
+end function drop_cols
+
+function drop_rows(self, idx, missing) result(df_new)
+! drop rows by index value
+class(DataFrame), intent(in) :: self
+integer, intent(in) :: idx(:)
+character(len=*), intent(in), optional :: missing
+type(DataFrame) :: df_new
+logical, allocatable :: keep(:)
+integer, allocatable :: ivec_keep(:)
+integer :: k, i, n
+character(len=100) :: miss
+
+miss = trim(default("error", missing))
+miss = str_lower(miss)
+
+n = nrow(self)
+allocate(keep(n))
+keep = .true.
+
+do k = 1, size(idx)
+   i = findloc(self%index, idx(k), dim=1)
+   if (i <= 0) then
+      if (miss == "ignore") cycle
+      error stop "drop_rows: index not found"
+   end if
+   keep(i) = .false.
+end do
+
+ivec_keep = pack(seq(1, n), keep)
+df_new = self%irow(ivec_keep)
+end function drop_rows
+
+subroutine rename_cols(self, old, new, missing)
+! rename columns: replace each old(i) with new(i)
+class(DataFrame), intent(in out) :: self
+character(len=*), intent(in) :: old(:), new(:)
+character(len=*), intent(in), optional :: missing
+integer :: k, j
+character(len=100) :: miss
+character(len=nlen_columns) :: key
+
+if (size(old) /= size(new)) error stop "rename_cols: size(old) /= size(new)"
+
+miss = trim(default("error", missing))
+miss = str_lower(miss)
+
+do k = 1, size(old)
+   key = trim(old(k))
+   j = findloc(self%columns, key, dim=1)
+   if (j <= 0) then
+      if (miss == "ignore") cycle
+      error stop "rename_cols: column not found: "//trim(old(k))
+   end if
+   self%columns(j) = trim(new(k))
+end do
+end subroutine rename_cols
+
+pure function str_lower(str) result(out)
+! return str converted to lowercase (ASCII)
+character(len=*), intent(in) :: str
+character(len=len(str))      :: out
+integer :: i, c
+out = str
+do i = 1, len(str)
+   c = iachar(out(i:i))
+   if (c >= iachar('A') .and. c <= iachar('Z')) out(i:i) = achar(c + 32)
+end do
+end function str_lower
+
 
 
 
