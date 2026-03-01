@@ -35,7 +35,7 @@ type :: DataFrame
    real(kind=dp), allocatable    :: values(:,:)
    contains
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
-         loc, append_col, append_cols, set_col
+         loc, append_col, append_cols, set_col, col_pos, row_pos, at, iat, set_at, set_iat
 end type DataFrame
 
 contains
@@ -87,6 +87,70 @@ else
 end if
 df_new = DataFrame(index=rows_, columns=columns_, values=df%values(jrow, jcol))
 end function loc
+
+pure function row_pos(self, idx) result(irow)
+! return the row position (1..nrow) for index value idx
+class(DataFrame), intent(in) :: self
+integer, intent(in) :: idx
+integer :: irow
+irow = findloc(self%index, idx, dim=1)
+if (irow == 0) error stop "in row_pos, index not found"
+end function row_pos
+
+pure function col_pos(self, column) result(jcol)
+! return the column position (1..ncol) for column name
+class(DataFrame), intent(in) :: self
+character(len=*), intent(in) :: column
+integer :: jcol
+jcol = findloc(self%columns, column, dim=1)
+if (jcol == 0) error stop "in col_pos, column not found: " // trim(column)
+end function col_pos
+
+pure function iat(self, i, j) result(x)
+! return a scalar element by 1-based row/column positions
+class(DataFrame), intent(in) :: self
+integer, intent(in) :: i, j
+real(kind=dp) :: x
+if (i < 1 .or. i > nrow(self)) error stop "in iat, row position out of range"
+if (j < 1 .or. j > ncol(self)) error stop "in iat, column position out of range"
+x = self%values(i, j)
+end function iat
+
+pure function at(self, idx, column) result(x)
+! return a scalar element by index value and column name
+class(DataFrame), intent(in) :: self
+integer, intent(in) :: idx
+character(len=*), intent(in) :: column
+real(kind=dp) :: x
+integer :: i, j
+i = self%row_pos(idx)
+j = self%col_pos(column)
+x = self%values(i, j)
+end function at
+
+pure subroutine set_iat(self, i, j, x)
+! set a scalar element by 1-based row/column positions
+class(DataFrame), intent(in out) :: self
+integer, intent(in) :: i, j
+real(kind=dp), intent(in) :: x
+if (i < 1 .or. i > nrow(self)) error stop "in set_iat, row position out of range"
+if (j < 1 .or. j > ncol(self)) error stop "in set_iat, column position out of range"
+self%values(i, j) = x
+end subroutine set_iat
+
+pure subroutine set_at(self, idx, column, x)
+! set a scalar element by index value and column name
+class(DataFrame), intent(in out) :: self
+integer, intent(in) :: idx
+character(len=*), intent(in) :: column
+real(kind=dp), intent(in) :: x
+integer :: i, j
+i = self%row_pos(idx)
+j = self%col_pos(column)
+self%values(i, j) = x
+end subroutine set_at
+
+
 
 pure function irow(df, ivec) result(df_new)
 ! returns a dataframe with the subset of columns in ivec(:)
