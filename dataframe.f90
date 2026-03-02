@@ -2,6 +2,7 @@ module dataframe_mod
 use kind_mod, only: dp
 use util_mod, only: default, split_string, seq, cbind
 use iso_fortran_env, only: output_unit
+use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_is_nan
 implicit none
 private
 public :: DataFrame, nrow, ncol, print_summary, random, operator(*), &
@@ -39,7 +40,7 @@ type :: DataFrame
    contains
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
          loc, append_col, append_cols, set_col, col_pos, row_pos, at, iat, set_at, set_iat, &
-         has_col, has_idx, drop_cols, drop_rows, rename_cols, where_cols, filter_cols, where, filter, iloc, select
+         has_col, has_idx, drop_cols, drop_rows, rename_cols, where_cols, filter_cols, where, filter, iloc, select, add, subtract, multiply, divide
 end type DataFrame
 
 contains
@@ -876,6 +877,260 @@ type(DataFrame)             :: res
 res = df
 if (allocated(res%values)) res%values = res%values/n
 end function div_df_n
+
+subroutine require_unique_labels(df, who)
+! error stop if df has duplicate index or duplicate column names
+type(DataFrame), intent(in) :: df
+character(len=*), intent(in) :: who
+character(len=200) :: msg
+integer :: i, j
+
+do i = 1, nrow(df) - 1
+   do j = i + 1, nrow(df)
+      if (df%index(i) == df%index(j)) then
+         write(msg, "(a, a)") trim(who), ": duplicate index"
+         error stop msg
+      end if
+   end do
+end do
+
+do i = 1, ncol(df) - 1
+   do j = i + 1, ncol(df)
+      if (trim(df%columns(i)) == trim(df%columns(j))) then
+         write(msg, "(a, a)") trim(who), ": duplicate columns"
+         error stop msg
+      end if
+   end do
+end do
+end subroutine require_unique_labels
+
+integer function find_col_trim(cols, name) result(pos)
+! return position of name in cols using trim() equality, or 0 if not found
+character(len=*), intent(in) :: cols(:)
+character(len=*), intent(in) :: name
+integer :: j
+pos = 0
+do j = 1, size(cols)
+   if (trim(cols(j)) == trim(name)) then
+      pos = j
+      return
+   end if
+end do
+end function find_col_trim
+
+function union_int(a, b) result(c)
+integer, intent(in) :: a(:), b(:)
+integer, allocatable :: c(:)
+integer, allocatable :: tmp(:)
+integer :: n, i
+allocate(tmp(size(a) + size(b)))
+n = 0
+do i = 1, size(a)
+   n = n + 1
+   tmp(n) = a(i)
+end do
+do i = 1, size(b)
+   if (.not. any(tmp(1:n) == b(i))) then
+      n = n + 1
+      tmp(n) = b(i)
+   end if
+end do
+allocate(c(n))
+c = tmp(1:n)
+end function union_int
+
+function intersect_int(a, b) result(c)
+integer, intent(in) :: a(:), b(:)
+integer, allocatable :: c(:)
+integer, allocatable :: tmp(:)
+integer :: n, i
+allocate(tmp(size(a)))
+n = 0
+do i = 1, size(a)
+   if (any(b == a(i))) then
+      n = n + 1
+      tmp(n) = a(i)
+   end if
+end do
+allocate(c(n))
+c = tmp(1:n)
+end function intersect_int
+
+function union_cols(a, b) result(c)
+character(len=nlen_columns), intent(in) :: a(:), b(:)
+character(len=nlen_columns), allocatable :: c(:)
+character(len=nlen_columns), allocatable :: tmp(:)
+integer :: n, i
+allocate(tmp(size(a) + size(b)))
+n = 0
+do i = 1, size(a)
+   n = n + 1
+   tmp(n) = a(i)
+end do
+do i = 1, size(b)
+   if (find_col_trim(tmp(1:n), b(i)) == 0) then
+      n = n + 1
+      tmp(n) = b(i)
+   end if
+end do
+allocate(c(n))
+c = tmp(1:n)
+end function union_cols
+
+function intersect_cols(a, b) result(c)
+character(len=nlen_columns), intent(in) :: a(:), b(:)
+character(len=nlen_columns), allocatable :: c(:)
+character(len=nlen_columns), allocatable :: tmp(:)
+integer :: n, i
+allocate(tmp(size(a)))
+n = 0
+do i = 1, size(a)
+   if (find_col_trim(b, a(i)) /= 0) then
+      n = n + 1
+      tmp(n) = a(i)
+   end if
+end do
+allocate(c(n))
+c = tmp(1:n)
+end function intersect_cols
+
+function aligned_binary(self, other, op, how, fill_value) result(res)
+! pandas-like aligned arithmetic on union/intersection of index and columns
+class(DataFrame), intent(in) :: self
+type(DataFrame), intent(in)  :: other
+character(len=*), intent(in) :: op
+character(len=*), intent(in), optional :: how
+real(kind=dp), intent(in), optional :: fill_value
+type(DataFrame) :: res
+
+character(len=20) :: how0
+integer, allocatable :: idx_out(:)
+character(len=nlen_columns), allocatable :: col_out(:)
+real(kind=dp), allocatable :: a(:,:), b(:,:)
+real(kind=dp) :: fill
+logical :: do_fill
+integer :: i, j, ii, jj, n1, n2
+real(kind=dp) :: x
+
+call require_unique_labels(self, "aligned_binary self")
+call require_unique_labels(other, "aligned_binary other")
+
+how0 = trim(default("outer", how))
+select case (how0)
+case ("outer")
+   idx_out = union_int(self%index, other%index)
+   col_out = union_cols(self%columns, other%columns)
+case ("inner")
+   idx_out = intersect_int(self%index, other%index)
+   col_out = intersect_cols(self%columns, other%columns)
+case ("left")
+   idx_out = self%index
+   col_out = self%columns
+case ("right")
+   idx_out = other%index
+   col_out = other%columns
+case default
+   error stop "aligned_binary: how must be outer/inner/left/right"
+end select
+
+n1 = size(idx_out)
+n2 = size(col_out)
+
+do_fill = present(fill_value)
+if (do_fill) then
+   fill = fill_value
+else
+   fill = ieee_value(0.0_dp, ieee_quiet_nan)
+end if
+
+allocate(a(n1, n2), b(n1, n2))
+a = fill
+b = fill
+
+! place self values into aligned array
+do i = 1, nrow(self)
+   ii = findloc(idx_out, self%index(i), dim=1)
+   if (ii <= 0) cycle
+   do j = 1, ncol(self)
+      jj = find_col_trim(col_out, self%columns(j))
+      if (jj <= 0) cycle
+      x = self%values(i, j)
+      if (do_fill) then
+         if (ieee_is_nan(x)) x = fill
+      end if
+      a(ii, jj) = x
+   end do
+end do
+
+! place other values into aligned array
+do i = 1, nrow(other)
+   ii = findloc(idx_out, other%index(i), dim=1)
+   if (ii <= 0) cycle
+   do j = 1, ncol(other)
+      jj = find_col_trim(col_out, other%columns(j))
+      if (jj <= 0) cycle
+      x = other%values(i, j)
+      if (do_fill) then
+         if (ieee_is_nan(x)) x = fill
+      end if
+      b(ii, jj) = x
+   end do
+end do
+
+allocate(res%index(n1), res%columns(n2), res%values(n1, n2))
+res%index = idx_out
+res%columns = col_out
+
+select case (trim(op))
+case ("+")
+   res%values = a + b
+case ("-")
+   res%values = a - b
+case ("*")
+   res%values = a * b
+case ("/")
+   res%values = a / b
+case default
+   error stop "aligned_binary: invalid op"
+end select
+end function aligned_binary
+
+function add(self, other, how, fill_value) result(res)
+class(DataFrame), intent(in) :: self
+type(DataFrame), intent(in) :: other
+character(len=*), intent(in), optional :: how
+real(kind=dp), intent(in), optional :: fill_value
+type(DataFrame) :: res
+res = aligned_binary(self, other, "+", how, fill_value)
+end function add
+
+function subtract(self, other, how, fill_value) result(res)
+class(DataFrame), intent(in) :: self
+type(DataFrame), intent(in) :: other
+character(len=*), intent(in), optional :: how
+real(kind=dp), intent(in), optional :: fill_value
+type(DataFrame) :: res
+res = aligned_binary(self, other, "-", how, fill_value)
+end function subtract
+
+function multiply(self, other, how, fill_value) result(res)
+class(DataFrame), intent(in) :: self
+type(DataFrame), intent(in) :: other
+character(len=*), intent(in), optional :: how
+real(kind=dp), intent(in), optional :: fill_value
+type(DataFrame) :: res
+res = aligned_binary(self, other, "*", how, fill_value)
+end function multiply
+
+function divide(self, other, how, fill_value) result(res)
+class(DataFrame), intent(in) :: self
+type(DataFrame), intent(in) :: other
+character(len=*), intent(in), optional :: how
+real(kind=dp), intent(in), optional :: fill_value
+type(DataFrame) :: res
+res = aligned_binary(self, other, "/", how, fill_value)
+end function divide
+
 
 subroutine require_same_df(df0, df1, who)
 type(DataFrame), intent(in) :: df0, df1
