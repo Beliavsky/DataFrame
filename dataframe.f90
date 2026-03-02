@@ -39,7 +39,7 @@ type :: DataFrame
    contains
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
          loc, append_col, append_cols, set_col, col_pos, row_pos, at, iat, set_at, set_iat, &
-         has_col, has_idx, drop_cols, drop_rows, rename_cols
+         has_col, has_idx, drop_cols, drop_rows, rename_cols, where_cols, filter_cols, where, filter, iloc, select
 end type DataFrame
 
 contains
@@ -263,6 +263,150 @@ do k = 1, size(old)
 end do
 end subroutine rename_cols
 
+
+
+function where_cols(self, mask_cols) result(df_new)
+! keep columns where mask_cols(j) is .true.
+class(DataFrame), intent(in) :: self
+logical, intent(in) :: mask_cols(:)
+type(DataFrame) :: df_new
+integer, allocatable :: j_keep(:)
+if (size(mask_cols) /= ncol(self)) error stop "where_cols: size(mask_cols) /= ncol(self)"
+j_keep = pack(seq(1, ncol(self)), mask_cols)
+df_new = self%icol(j_keep)
+end function where_cols
+
+function filter_cols(self, mask_cols, drop) result(df_new)
+! filter columns by mask; if drop=.true. then drop columns where mask is .true.
+class(DataFrame), intent(in) :: self
+logical, intent(in) :: mask_cols(:)
+logical, intent(in), optional :: drop
+type(DataFrame) :: df_new
+logical :: drop_
+logical, allocatable :: keep(:)
+drop_ = default(.false., drop)
+if (size(mask_cols) /= ncol(self)) error stop "filter_cols: size(mask_cols) /= ncol(self)"
+allocate(keep(size(mask_cols)))
+if (drop_) then
+   keep = .not. mask_cols
+else
+   keep = mask_cols
+end if
+df_new = self%where_cols(keep)
+end function filter_cols
+
+function where(self, mask_rows, mask_cols) result(df_new)
+! keep rows and columns where masks are .true.
+class(DataFrame), intent(in) :: self
+logical, intent(in) :: mask_rows(:)
+logical, intent(in) :: mask_cols(:)
+type(DataFrame) :: df_new
+integer, allocatable :: i_keep(:), j_keep(:)
+if (size(mask_rows) /= nrow(self)) error stop "where: size(mask_rows) /= nrow(self)"
+if (size(mask_cols) /= ncol(self)) error stop "where: size(mask_cols) /= ncol(self)"
+i_keep = pack(seq(1, nrow(self)), mask_rows)
+j_keep = pack(seq(1, ncol(self)), mask_cols)
+df_new = DataFrame(index=self%index(i_keep), columns=self%columns(j_keep), values=self%values(i_keep, j_keep))
+end function where
+
+function filter(self, mask_rows, mask_cols, drop_rows, drop_cols) result(df_new)
+! filter rows and columns by masks; if drop_rows/drop_cols are .true. then drop where mask is .true.
+class(DataFrame), intent(in) :: self
+logical, intent(in) :: mask_rows(:)
+logical, intent(in) :: mask_cols(:)
+logical, intent(in), optional :: drop_rows, drop_cols
+type(DataFrame) :: df_new
+logical :: drop_r, drop_c
+logical, allocatable :: keep_rows(:), keep_cols(:)
+
+if (size(mask_rows) /= nrow(self)) error stop "filter: size(mask_rows) /= nrow(self)"
+if (size(mask_cols) /= ncol(self)) error stop "filter: size(mask_cols) /= ncol(self)"
+
+drop_r = default(.false., drop_rows)
+drop_c = default(.false., drop_cols)
+
+allocate(keep_rows(size(mask_rows)))
+allocate(keep_cols(size(mask_cols)))
+
+if (drop_r) then
+   keep_rows = .not. mask_rows
+else
+   keep_rows = mask_rows
+end if
+
+if (drop_c) then
+   keep_cols = .not. mask_cols
+else
+   keep_cols = mask_cols
+end if
+
+df_new = self%where(keep_rows, keep_cols)
+end function filter
+
+function iloc(self, rows, cols) result(df_new)
+! positional selection by row/column positions (1-based)
+class(DataFrame), intent(in) :: self
+integer, intent(in), optional :: rows(:)
+integer, intent(in), optional :: cols(:)
+type(DataFrame) :: df_new
+if (present(rows) .and. present(cols)) then
+   df_new = self%select(irows=rows, icols=cols)
+else if (present(rows)) then
+   df_new = self%select(irows=rows)
+else if (present(cols)) then
+   df_new = self%select(icols=cols)
+else
+   df_new = self%select()
+end if
+end function iloc
+
+function select(self, rows, columns, irows, icols) result(df_new)
+! select a sub-dataframe using label- or position-based selectors on each axis.
+! rules:
+!  - at most one of rows/irows may be present
+!  - at most one of columns/icols may be present
+class(DataFrame), intent(in) :: self
+integer, intent(in), optional :: rows(:)
+character(len=*), intent(in), optional :: columns(:)
+integer, intent(in), optional :: irows(:)
+integer, intent(in), optional :: icols(:)
+type(DataFrame) :: df_new
+integer, allocatable :: i_keep(:), j_keep(:)
+integer :: k
+
+if (present(rows) .and. present(irows)) error stop "select: both rows and irows are present"
+if (present(columns) .and. present(icols)) error stop "select: both columns and icols are present"
+
+if (present(rows)) then
+   allocate(i_keep(size(rows)))
+   do k = 1, size(rows)
+      i_keep(k) = self%row_pos(rows(k))
+   end do
+else if (present(irows)) then
+   i_keep = irows
+   do k = 1, size(i_keep)
+      if (i_keep(k) < 1 .or. i_keep(k) > nrow(self)) error stop "select: row position out of range"
+   end do
+else
+   i_keep = seq(1, nrow(self))
+end if
+
+if (present(columns)) then
+   allocate(j_keep(size(columns)))
+   do k = 1, size(columns)
+      j_keep(k) = self%col_pos(columns(k))
+   end do
+else if (present(icols)) then
+   j_keep = icols
+   do k = 1, size(j_keep)
+      if (j_keep(k) < 1 .or. j_keep(k) > ncol(self)) error stop "select: column position out of range"
+   end do
+else
+   j_keep = seq(1, ncol(self))
+end if
+
+df_new = DataFrame(index=self%index(i_keep), columns=self%columns(j_keep), values=self%values(i_keep, j_keep))
+end function select
 pure function str_lower(str) result(out)
 ! return str converted to lowercase (ASCII)
 character(len=*), intent(in) :: str
