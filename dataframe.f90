@@ -39,7 +39,7 @@ type :: DataFrame
    real(kind=dp), allocatable    :: values(:,:)
    contains
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
-         loc, append_col, append_cols, set_col, col_pos, row_pos, at, iat, set_at, set_iat, &
+         loc, append_col, append_cols, set_col, col_pos, row_pos, sort_index, is_sorted_index, is_unique_index, at, iat, set_at, set_iat, &
          has_col, has_idx, drop_cols, drop_rows, rename_cols, where_cols, filter_cols, where, filter, iloc, select, add, subtract, multiply, divide
 end type DataFrame
 
@@ -93,14 +93,217 @@ end if
 df_new = DataFrame(index=rows_, columns=columns_, values=df%values(jrow, jcol))
 end function loc
 
-pure function row_pos(self, idx) result(irow)
+pure function row_pos(self, idx, assume_sorted, ascending) result(irow)
 ! return the row position (1..nrow) for index value idx
+! if assume_sorted is true, use binary search assuming index is sorted
 class(DataFrame), intent(in) :: self
 integer, intent(in) :: idx
+logical, intent(in), optional :: assume_sorted, ascending
 integer :: irow
-irow = findloc(self%index, idx, dim=1)
+logical :: do_sorted, asc
+integer :: lo, hi, mid
+
+do_sorted = default(.false., assume_sorted)
+asc = default(.true., ascending)
+
+if (.not. allocated(self%index)) error stop "in row_pos, index is not allocated"
+
+if (do_sorted) then
+   ! binary search for first occurrence (like findloc) in a sorted index
+   lo = 1
+   hi = size(self%index)
+   irow = 0
+   do while (lo <= hi)
+      mid = (lo + hi) / 2
+      if (asc) then
+         if (self%index(mid) < idx) then
+            lo = mid + 1
+         else
+            if (self%index(mid) == idx) irow = mid
+            hi = mid - 1
+         end if
+      else
+         if (self%index(mid) > idx) then
+            lo = mid + 1
+         else
+            if (self%index(mid) == idx) irow = mid
+            hi = mid - 1
+         end if
+      end if
+   end do
+else
+   irow = findloc(self%index, idx, dim=1)
+end if
+
 if (irow == 0) error stop "in row_pos, index not found"
 end function row_pos
+
+function is_sorted_index(self, ascending) result(is_sorted)
+! return true if index is sorted (nondecreasing if ascending, nonincreasing otherwise)
+class(DataFrame), intent(in) :: self
+logical, intent(in), optional :: ascending
+logical :: is_sorted
+logical :: asc
+integer :: i, n
+
+asc = default(.true., ascending)
+
+if (.not. allocated(self%index)) then
+   is_sorted = .true.
+   return
+end if
+
+n = size(self%index)
+is_sorted = .true.
+if (n <= 1) return
+
+if (asc) then
+   do i=2,n
+      if (self%index(i) < self%index(i-1)) then
+         is_sorted = .false.
+         exit
+      end if
+   end do
+else
+   do i=2,n
+      if (self%index(i) > self%index(i-1)) then
+         is_sorted = .false.
+         exit
+      end if
+   end do
+end if
+end function is_sorted_index
+
+function is_unique_index(self) result(is_unique)
+! return true if index has no duplicates
+class(DataFrame), intent(in) :: self
+logical :: is_unique
+integer :: n, i
+integer, allocatable :: perm(:), tmp(:)
+
+if (.not. allocated(self%index)) then
+   is_unique = .true.
+   return
+end if
+
+n = size(self%index)
+if (n <= 1) then
+   is_unique = .true.
+   return
+end if
+
+! sort a copy and check adjacent duplicates
+allocate(tmp(n))
+tmp = self%index
+call argsort_int(tmp, perm, ascending=.true.)
+tmp = tmp(perm)
+is_unique = .true.
+do i=2,n
+   if (tmp(i) == tmp(i-1)) then
+      is_unique = .false.
+      exit
+   end if
+end do
+deallocate(tmp, perm)
+end function is_unique_index
+
+subroutine sort_index(self, ascending)
+! sort rows by index, permuting values accordingly
+class(DataFrame), intent(inout) :: self
+logical, intent(in), optional :: ascending
+logical :: asc
+integer :: n
+integer, allocatable :: perm(:)
+real(kind=dp), allocatable :: vtmp(:,:)
+
+asc = default(.true., ascending)
+
+if (.not. allocated(self%index)) return
+if (.not. allocated(self%values)) return
+
+n = size(self%index)
+if (n <= 1) return
+
+call argsort_int(self%index, perm, ascending=asc)
+
+! reorder index
+self%index = self%index(perm)
+
+! reorder values
+allocate(vtmp(n, size(self%values,2)))
+vtmp = self%values(perm, :)
+self%values = vtmp
+deallocate(vtmp, perm)
+end subroutine sort_index
+
+subroutine argsort_int(a, perm, ascending)
+! return permutation perm such that a(perm) is sorted (stable mergesort)
+integer, intent(in) :: a(:)
+integer, allocatable, intent(out) :: perm(:)
+logical, intent(in), optional :: ascending
+logical :: asc
+integer :: n, width, i, left, mid, right, p, q, k
+integer, allocatable :: tmp(:)
+
+asc = default(.true., ascending)
+n = size(a)
+allocate(perm(n), tmp(n))
+perm = [(i, i=1,n)]
+
+width = 1
+do while (width < n)
+   i = 1
+   do while (i <= n)
+      left = i
+      mid = min(i + width - 1, n)
+      right = min(i + 2*width - 1, n)
+
+      p = left
+      q = mid + 1
+      k = left
+
+      do while (p <= mid .and. q <= right)
+         if (asc) then
+            if (a(perm(p)) <= a(perm(q))) then
+               tmp(k) = perm(p)
+               p = p + 1
+            else
+               tmp(k) = perm(q)
+               q = q + 1
+            end if
+         else
+            if (a(perm(p)) >= a(perm(q))) then
+               tmp(k) = perm(p)
+               p = p + 1
+            else
+               tmp(k) = perm(q)
+               q = q + 1
+            end if
+         end if
+         k = k + 1
+      end do
+
+      do while (p <= mid)
+         tmp(k) = perm(p)
+         p = p + 1
+         k = k + 1
+      end do
+
+      do while (q <= right)
+         tmp(k) = perm(q)
+         q = q + 1
+         k = k + 1
+      end do
+
+      perm(left:right) = tmp(left:right)
+      i = i + 2*width
+   end do
+   width = 2*width
+end do
+
+deallocate(tmp)
+end subroutine argsort_int
+
 
 pure function col_pos(self, column) result(jcol)
 ! return the column position (1..ncol) for column name
