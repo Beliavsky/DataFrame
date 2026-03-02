@@ -23,7 +23,7 @@ if (abs(x-y) > tol) error stop msg
 end subroutine assert_close
 
 subroutine test_shift_pct_change
-type(DataFrame) :: df, d1, d2, pc
+type(DataFrame) :: df, d1, d2, pc, lc
 real(kind=dp), parameter :: fill = -999.0_dp
 real(kind=dp), parameter :: tol = 1.0e-12_dp
 
@@ -56,6 +56,15 @@ call assert_true(ieee_is_nan(pc%values(1,1)), "pct_change first row should be Na
 call assert_close(pc%values(2,1), 1.0_dp, tol, "pct_change row2")
 call assert_close(pc%values(3,1), 0.5_dp, tol, "pct_change row3")
 call assert_close(pc%values(4,2), 40.0_dp/30.0_dp - 1.0_dp, tol, "pct_change col2")
+
+! log_change
+
+ lc = df%log_change(1)
+call assert_true(ieee_is_nan(lc%values(1,1)), "log_change first row should be NaN")
+call assert_close(lc%values(2,1), log(2.0_dp/1.0_dp), tol, "log_change row2")
+call assert_close(lc%values(3,1), log(3.0_dp/2.0_dp), tol, "log_change row3")
+call assert_close(lc%values(4,2), log(40.0_dp/30.0_dp), tol, "log_change col2")
+call assert_close(lc%values(3,1), log(1.0_dp + pc%values(3,1)), tol, "log_change matches pct_change")
 end subroutine test_shift_pct_change
 
 subroutine test_reindex
