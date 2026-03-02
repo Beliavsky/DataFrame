@@ -1,7 +1,7 @@
-executables = xacf_gfort.exe xbasic_stats_gfort.exe xcbind_gfort.exe xdataframe_append_gfort.exe xdataframe_loc_gfort.exe xdataframe_stats_gfort.exe xxdataframe_stats_gfort.exe xdataframe_gfort.exe xreturns_dist_gfort.exe xtable_gfort.exe xtable_stats_gfort.exe xxtable_gfort.exe xutil_gfort.exe xxdataframe_gfort.exe xdataframe_indexing_gfort.exe xdataframe_drop_gfort.exe xdataframe_ops_gfort.exe
+executables = xacf_gfort.exe xbasic_stats_gfort.exe xcbind_gfort.exe xdataframe_append_gfort.exe xdataframe_loc_gfort.exe xdataframe_stats_gfort.exe xxdataframe_stats_gfort.exe xdataframe_gfort.exe xreturns_dist_gfort.exe xtable_gfort.exe xtable_stats_gfort.exe xxtable_gfort.exe xutil_gfort.exe xxdataframe_gfort.exe xdataframe_indexing_gfort.exe xdataframe_drop_gfort.exe xdataframe_ops_gfort.exe xdataframe_select_gfort.exe
 FC     = gfortran
 FFLAGS = -O0 -Wall -Werror=unused-parameter -Werror=unused-variable -Werror=unused-function -Wno-maybe-uninitialized -Wno-surprising -fbounds-check -g -fmodule-private
-obj    = kind.o util.o constants.o random.o basic_stats.o xacf.o xbasic_stats.o xcbind.o dataframe.o xdataframe_append.o xdataframe_loc.o table.o table_stats.o dataframe_stats.o xdataframe_stats.o xxdataframe_stats.o xdataframe.o prob_dist.o xreturns_dist.o xtable.o xtable_stats.o xxtable.o xutil.o xxdataframe.o xdataframe_indexing.o xdataframe_drop.o xdataframe_ops.o
+obj    = kind.o util.o constants.o random.o basic_stats.o xacf.o xbasic_stats.o xcbind.o dataframe.o xdataframe_append.o xdataframe_loc.o table.o table_stats.o dataframe_stats.o xdataframe_stats.o xxdataframe_stats.o xdataframe.o prob_dist.o xreturns_dist.o xtable.o xtable_stats.o xxtable.o xutil.o xxdataframe.o xdataframe_indexing.o xdataframe_drop.o xdataframe_ops.o xdataframe_select.o
 
 all: $(executables)
 
@@ -57,9 +57,11 @@ xdataframe_indexing_gfort.exe: kind.o util.o dataframe.o xdataframe_indexing.o
 xdataframe_drop_gfort.exe: kind.o util.o dataframe.o xdataframe_drop.o
 	$(FC) -o xdataframe_drop_gfort.exe kind.o util.o dataframe.o xdataframe_drop.o $(FFLAGS)
 
-
 xdataframe_ops_gfort.exe: kind.o util.o dataframe.o xdataframe_ops.o
 	$(FC) -o xdataframe_ops_gfort.exe kind.o util.o dataframe.o xdataframe_ops.o $(FFLAGS)
+
+xdataframe_select_gfort.exe: kind.o util.o dataframe.o xdataframe_select.o
+	$(FC) -o xdataframe_select_gfort.exe kind.o util.o dataframe.o xdataframe_select.o $(FFLAGS)
 
 run: $(executables)
 	./xacf_gfort.exe
@@ -79,6 +81,7 @@ run: $(executables)
 	./xdataframe_indexing_gfort.exe
 	./xdataframe_drop_gfort.exe
 	./xdataframe_ops_gfort.exe
+	./xdataframe_select_gfort.exe
 
 clean:
 	rm -f $(executables) $(obj)
