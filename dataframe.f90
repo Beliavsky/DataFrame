@@ -14,16 +14,19 @@ interface display
 end interface display
 interface operator (*)
    module procedure mult_x_df, mult_df_x, mult_n_df, mult_df_n
+   module procedure mult_df_df
 end interface
 interface operator (/)
    module procedure div_df_x, div_df_n, div_x_df, div_n_df
+   module procedure div_df_df
 end interface
 interface operator (+)
    module procedure add_x_df, add_df_x, add_n_df, add_df_n
+   module procedure add_df_df
 end interface
 interface operator (-)
    module procedure subtract_x_df, subtract_df_x, &
-      subtract_n_df, subtract_df_n
+      subtract_n_df, subtract_df_n, subtract_df_df
 end interface
 interface operator (**)
    module procedure power_df_n, power_df_x
@@ -729,6 +732,69 @@ type(DataFrame)             :: res
 res = df
 if (allocated(res%values)) res%values = res%values/n
 end function div_df_n
+
+subroutine require_same_df(df0, df1, who)
+type(DataFrame), intent(in) :: df0, df1
+character(len=*), intent(in) :: who
+character(len=200) :: msg
+integer :: j
+if (nrow(df0) /= nrow(df1)) then
+   write(msg,'("in ",a,", nrow mismatch")') trim(who)
+   error stop msg
+end if
+if (ncol(df0) /= ncol(df1)) then
+   write(msg,'("in ",a,", ncol mismatch")') trim(who)
+   error stop msg
+end if
+if (any(df0%index /= df1%index)) then
+   write(msg,'("in ",a,", index mismatch")') trim(who)
+   error stop msg
+end if
+do j=1,ncol(df0)
+   if (trim(df0%columns(j)) /= trim(df1%columns(j))) then
+      write(msg,'("in ",a,", columns mismatch")') trim(who)
+      error stop msg
+   end if
+end do
+end subroutine require_same_df
+
+function add_df_df(df0, df1) result(res)
+type(DataFrame), intent(in) :: df0
+type(DataFrame), intent(in) :: df1
+type(DataFrame)             :: res
+call require_same_df(df0, df1, "add_df_df")
+res = df0
+if (allocated(res%values)) res%values = df0%values + df1%values
+end function add_df_df
+
+function subtract_df_df(df0, df1) result(res)
+type(DataFrame), intent(in) :: df0
+type(DataFrame), intent(in) :: df1
+type(DataFrame)             :: res
+call require_same_df(df0, df1, "subtract_df_df")
+res = df0
+if (allocated(res%values)) res%values = df0%values - df1%values
+end function subtract_df_df
+
+function mult_df_df(df0, df1) result(res)
+type(DataFrame), intent(in) :: df0
+type(DataFrame), intent(in) :: df1
+type(DataFrame)             :: res
+call require_same_df(df0, df1, "mult_df_df")
+res = df0
+if (allocated(res%values)) res%values = df0%values * df1%values
+end function mult_df_df
+
+function div_df_df(df0, df1) result(res)
+type(DataFrame), intent(in) :: df0
+type(DataFrame), intent(in) :: df1
+type(DataFrame)             :: res
+call require_same_df(df0, df1, "div_df_df")
+res = df0
+if (allocated(res%values)) res%values = df0%values / df1%values
+end function div_df_df
+
+
 
 elemental function power_df_n(df, n) result(res)
 ! return df**n element-wise
