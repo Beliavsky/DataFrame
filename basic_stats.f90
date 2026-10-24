@@ -2,13 +2,14 @@ module basic_stats_mod
 use iso_fortran_env, only: output_unit
 use kind_mod, only: dp
 use util_mod, only: default, print_table
+use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
 implicit none
 private
 public :: mean, variance, sd, mean_and_sd, kurtosis, basic_stats, &
    print_basic_stats, basic_stats_names, correl, acf, nbasic_stats, &
    stat, stats, corr_mat, rms, moving_sum, moving_average, &
    print_corr_mat, skew, cov, cov_mat, print_cov_mat, print_acf_mat, &
-   print_acf
+   print_acf, col_stats_ignore_nan
 integer, parameter :: nbasic_stats = 6
 character (len=*), parameter :: basic_stats_names(nbasic_stats) = &
    [character(len=4) :: "mean", "sd", "skew", "kurt", "min", "max"]
@@ -452,4 +453,46 @@ do i=k+1,n
 end do
 end function moving_average
 
+subroutine col_stats_ignore_nan(x, n, mean_x, sd_x, min_x, max_x) ! compute basic stats ignoring nan values
+real(kind=dp), intent(in) :: x(:)
+integer, intent(out) :: n
+real(kind=dp), intent(out) :: mean_x, sd_x, min_x, max_x
+real(kind=dp) :: s1, s2, xi, nan
+integer :: i
+
+nan = ieee_value(0.0_dp, ieee_quiet_nan)
+n = 0
+s1 = 0.0_dp
+s2 = 0.0_dp
+min_x = nan
+max_x = nan
+
+do i = 1, size(x)
+   xi = x(i)
+   if (ieee_is_nan(xi)) cycle
+   n = n + 1
+   s1 = s1 + xi
+   s2 = s2 + xi*xi
+   if (n == 1) then
+      min_x = xi
+      max_x = xi
+   else
+      if (xi < min_x) min_x = xi
+      if (xi > max_x) max_x = xi
+   end if
+end do
+
+if (n == 0) then
+   mean_x = nan
+   sd_x = nan
+   min_x = nan
+   max_x = nan
+else if (n == 1) then
+   mean_x = s1
+   sd_x = nan
+else
+   mean_x = s1/n
+   sd_x = sqrt(max(0.0_dp, (s2 - n*mean_x*mean_x)/(n - 1)))
+end if
+end subroutine col_stats_ignore_nan
 end module basic_stats_mod

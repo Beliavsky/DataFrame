@@ -55,3 +55,29 @@ The ETFs are
    TLT -- iShares 20+ Year Treasury Bond (U.S. long-term government bonds)
 ```
 The pairwise correlations of returns of all the stock ETFs (SPY, EFA, EEM) all exceed 0.8, while they are negatively correlated to TLT.
+
+## Missing values
+
+`df%isna()` returns a logical matrix marking IEEE NaNs. Infinities are not
+missing values. `df%dropna(axis="rows", how="any")` returns a filtered copy,
+preserving labels and order; `rows` and `any` are the defaults. Use `axis="cols"`
+(or `"columns"`) to filter columns, and `how="all"` to remove only entirely
+missing rows or columns. Options are case insensitive. On an empty axis,
+`any` removes nothing and `all` removes every row/column along the other axis.
+
+`call df%fillna(value=0.0_dp)` replaces NaNs in place. Alternatively,
+`call df%fillna(method="ffill")` propagates the preceding nonmissing value
+within each column; `"bfill"` propagates the following value. Leading NaNs
+remain after forward filling, trailing NaNs remain after backward filling,
+and wholly missing columns remain missing. Supply exactly one of `value`
+and `method`. These operations require allocated values; `dropna` also
+requires matching index and column labels.
+
+`read_csv` recognizes empty numeric fields and `NA`, `NaN`, and `null`
+(case insensitive) as missing. Reading again replaces the previous contents.
+Other invalid numeric fields are errors.
+
+Run `python tests/test_missing_values.py` to compile and run the CSV and
+edge-case tests with gfortran at `-O0` and `-O2`, including runtime checks and
+invalid-option diagnostics. The two Fortran test programs are also included
+in `make all` and `make run`.

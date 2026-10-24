@@ -41,10 +41,114 @@ type :: DataFrame
       procedure :: read_csv, display=>display_data, write_csv, irow, icol, &
          loc, append_col, append_cols, set_col, col_pos, row_pos, sort_index, is_sorted_index, is_unique_index, at, iat, set_at, set_iat, &
          has_col, has_idx, drop_cols, drop_rows, rename_cols, where_cols, filter_cols, where, filter, iloc, select, add, subtract, multiply, divide, &
-         reindex, shift, pct_change, log_change
+         reindex, shift, pct_change, log_change, isna, dropna, fillna
 end type DataFrame
 
 contains
+
+
+function isna(self) result(mask)
+! Missing values are IEEE NaNs; infinities are not missing.
+class(DataFrame), intent(in) :: self
+logical, allocatable :: mask(:,:)
+if (.not. allocated(self%values)) error stop "isna: values not allocated"
+mask = ieee_is_nan(self%values)
+end function isna
+
+function dropna(self, axis, how) result(df_new)
+! Return a filtered copy, preserving index/column order and labels.
+! Defaults: drop rows containing any NaN. ALL on an empty axis is true.
+class(DataFrame), intent(in) :: self
+character(len=*), intent(in), optional :: axis, how
+type(DataFrame) :: df_new
+character(len=:), allocatable :: axis_, how_
+logical, allocatable :: missing(:,:), remove(:)
+integer, allocatable :: keep(:)
+integer :: dim, i
+axis_ = 'rows'
+how_ = 'any'
+if (present(axis)) axis_ = na_option(axis)
+if (present(how)) how_ = na_option(how)
+select case (axis_)
+case ('rows')
+   dim = 2
+case ('cols', 'columns')
+   dim = 1
+case default
+   error stop "dropna: axis must be rows or cols"
+end select
+if (how_ /= 'any' .and. how_ /= 'all') error stop "dropna: how must be any or all"
+missing = self%isna()
+if (.not. allocated(self%index)) error stop "dropna: index not allocated"
+if (.not. allocated(self%columns)) error stop "dropna: columns not allocated"
+if (size(self%index) /= size(self%values,1)) error stop "dropna: inconsistent index size"
+if (size(self%columns) /= size(self%values,2)) error stop "dropna: inconsistent column size"
+if (how_ == 'any') then
+   remove = any(missing, dim=dim)
+else
+   remove = all(missing, dim=dim)
+end if
+keep = pack([(i,i=1,size(remove))], .not. remove)
+if (dim == 2) then
+   df_new = self%irow(keep)
+else
+   df_new = self%icol(keep)
+end if
+end function dropna
+
+subroutine fillna(self, value, method)
+! Fill in place with a constant, or propagate within each column.
+! Forward fill leaves leading NaNs; backward fill leaves trailing NaNs.
+class(DataFrame), intent(inout) :: self
+real(kind=dp), intent(in), optional :: value
+character(len=*), intent(in), optional :: method
+character(len=:), allocatable :: method_
+integer :: i, j, first, last, step
+real(kind=dp) :: previous
+logical :: have_previous
+if (present(value) .eqv. present(method)) error stop "fillna: supply exactly one of value or method"
+if (.not. allocated(self%values)) error stop "fillna: values not allocated"
+if (present(value)) then
+   where (ieee_is_nan(self%values)) self%values = value
+   return
+end if
+method_ = na_option(method)
+select case (method_)
+case ('ffill')
+   first = lbound(self%values,1)
+   last = ubound(self%values,1)
+   step = 1
+case ('bfill')
+   first = ubound(self%values,1)
+   last = lbound(self%values,1)
+   step = -1
+case default
+   error stop "fillna: method must be ffill or bfill"
+end select
+do j = lbound(self%values,2), ubound(self%values,2)
+   have_previous = .false.
+   previous = 0.0_dp
+   do i = first, last, step
+      if (ieee_is_nan(self%values(i,j))) then
+         if (have_previous) self%values(i,j) = previous
+      else
+         previous = self%values(i,j)
+         have_previous = .true.
+      end if
+   end do
+end do
+end subroutine fillna
+
+pure function na_option(text) result(option)
+character(len=*), intent(in) :: text
+character(len=:), allocatable :: option
+integer :: i, code
+option = trim(adjustl(text))
+do i=1,len(option)
+   code = iachar(option(i:i))
+   if (code >= iachar('A') .and. code <= iachar('Z')) option(i:i) = achar(code+32)
+end do
+end function na_option
 
 pure function shape(df) result(ishape)
 ! return a 2-element array with the number of rows and columns of the dataframe
@@ -764,7 +868,10 @@ do i = 2, size(tokens)
    maxlen = max(maxlen, len_trim(tokens(i)))
 end do
 
-! Allocate columns
+! Replace the previous contents when reading into an existing DataFrame.
+if (allocated(self%columns)) deallocate(self%columns)
+if (allocated(self%index)) deallocate(self%index)
+if (allocated(self%values)) deallocate(self%values)
 allocate(self%columns(ncols))
 do i = 1, ncols
    self%columns(i) = tokens(i+1)
@@ -798,11 +905,18 @@ do i = 1, nrows
    read(unit, '(A)', iostat=io) line
    if (trim(line) == "") exit
    call split_string(line, ",", tokens)
-   ! First token is t<he index.
+   if (size(tokens) < ncols+1) error stop "read_csv: too few fields in data row"
+   ! First token is the index.
    read(tokens(1), *) self%index(i)
    ! Remaining tokens are the real values.
    do j = 1, ncols
-      read(tokens(j+1), *) self%values(i,j)
+      select case (na_option(tokens(j+1)))
+      case ('', 'na', 'nan', 'null')
+         self%values(i,j) = ieee_value(0.0_dp, ieee_quiet_nan)
+      case default
+         read(tokens(j+1), *, iostat=io) self%values(i,j)
+         if (io /= 0) error stop "read_csv: invalid numeric field"
+      end select
    end do
 end do
 
