@@ -884,7 +884,9 @@ do
       if (nrows >= max_rows) exit
    end if
    read(unit, '(A)', iostat=io) line
-   if (io /= 0 .or. trim(line) == "") exit
+   ! A failed READ leaves LINE undefined; .OR. need not short-circuit.
+   if (io /= 0) exit
+   if (trim(line) == "") exit
    nrows = nrows + 1
 end do
 
@@ -903,6 +905,7 @@ allocate(self%index(nrows), self%values(nrows, ncols))
 ! 6) Read each data row.
 do i = 1, nrows
    read(unit, '(A)', iostat=io) line
+   if (io /= 0) error stop "read_csv: failed to read data row"
    if (trim(line) == "") exit
    call split_string(line, ",", tokens)
    if (size(tokens) < ncols+1) error stop "read_csv: too few fields in data row"

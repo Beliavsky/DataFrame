@@ -11,7 +11,7 @@ class MissingValues(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='dataframe-na-') as tmp:
             directory=Path(tmp)
             for optimization in ('-O0','-O2'):
-                for program in ('xdataframe_na','xdataframe_na_edges'):
+                for program in ('xdataframe_na','xdataframe_na_edges','xdataframe_read_csv'):
                     exe=directory/(program+'.exe')
                     built=subprocess.run(['gfortran',optimization,'-fcheck=all',
                         *[str(ROOT/n) for n in ('kind.f90','util.f90','dataframe.f90',program+'.f90')],

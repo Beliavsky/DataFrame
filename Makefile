@@ -3,8 +3,8 @@ FC     = gfortran
 FFLAGS = -O0 -Wall -Werror=unused-parameter -Werror=unused-variable -Werror=unused-function -Wno-maybe-uninitialized -Wno-surprising -fbounds-check -g -fmodule-private
 obj    = kind.o util.o constants.o random.o basic_stats.o xacf.o xbasic_stats.o xcbind.o dataframe.o xdataframe_append.o xdataframe_loc.o table.o table_stats.o dataframe_stats.o xdataframe_stats.o xxdataframe_stats.o xdataframe.o prob_dist.o xreturns_dist.o xtable.o xtable_stats.o xxtable.o xutil.o xxdataframe.o xdataframe_indexing.o xdataframe_drop.o xdataframe_ops.o xdataframe_select.o xdataframe_align_ops.o xdataframe_sort_index.o xdataframe_reindex.o
 
-executables += xdataframe_na_gfort.exe xdataframe_na_edges_gfort.exe
-obj += xdataframe_na.o xdataframe_na_edges.o
+executables += xdataframe_na_gfort.exe xdataframe_na_edges_gfort.exe xdataframe_read_csv_gfort.exe
+obj += xdataframe_na.o xdataframe_na_edges.o xdataframe_read_csv.o
 
 all: $(executables)
 
@@ -82,6 +82,9 @@ xdataframe_na_gfort.exe: kind.o util.o dataframe.o xdataframe_na.o
 xdataframe_na_edges_gfort.exe: kind.o util.o dataframe.o xdataframe_na_edges.o
 	$(FC) -o $@ $^ $(FFLAGS)
 
+xdataframe_read_csv_gfort.exe: kind.o util.o dataframe.o xdataframe_read_csv.o
+	$(FC) -o $@ $^ $(FFLAGS)
+
 run: $(executables)
 	./xacf_gfort.exe
 	./xbasic_stats_gfort.exe
@@ -106,6 +109,7 @@ run: $(executables)
 	./xdataframe_reindex_gfort.exe
 	./xdataframe_na_gfort.exe
 	./xdataframe_na_edges_gfort.exe
+	./xdataframe_read_csv_gfort.exe
 
 clean:
 	rm -f $(executables) $(obj)
