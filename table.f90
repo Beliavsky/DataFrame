@@ -125,6 +125,11 @@ do i = 2, size(tokens)
    maxlen = max(maxlen, len_trim(tokens(i)))
 end do
 
+! Replace storage from any previous CSV read.
+if (allocated(self%columns)) deallocate(self%columns)
+if (allocated(self%index)) deallocate(self%index)
+if (allocated(self%values)) deallocate(self%values)
+
 ! Allocate columns with fixed length = maxlen
 allocate(character(len=maxlen) :: self%columns(ncols))
 do i = 1, ncols
