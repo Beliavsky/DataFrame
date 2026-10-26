@@ -135,7 +135,8 @@ end do
 nrows = 0
 do
    read(unit, '(A)', iostat=io) line
-   if (io /= 0 .or. trim(line) == "") exit
+   if (io /= 0) exit
+   if (trim(line) == "") exit
    nrows = nrows + 1
 end do
 
